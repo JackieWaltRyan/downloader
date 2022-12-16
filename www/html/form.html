@@ -1,0 +1,63 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+    <head>
+        <meta charset="utf-8"/>
+        <script type="text/javascript" src="/js/form.js"></script>
+        <link rel="icon" href="/images/favicon.png" type="image/png"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="stylesheet" type="text/css" href="https://bronyru.info/_design/style.css"/>
+    </head>
+    <body id="FramedText">
+        <form action="{{domen}}/{{name}}" method="post">
+            <table style="font-size: 14pt;">
+                <thead>
+                    <tr align="left" valign="bottom">
+                        <th style="padding-left: 24px;">Файл:</th>
+                        <th style="padding-left: 24px;">Качество:</th>
+                        <th style="padding-left: 24px;">Озвучки:</th>
+                        <th style="padding-left: 24px;">Субтитры:</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr valign="top">
+                        <td>
+                            <label class="radio"><input name="format" type="radio" value="mkv"> .mkv</label><br>
+                            <label class="radio"><input name="format" type="radio" value="mp4"> .mp4</label><br>
+                        </td>
+                        <td>
+                            <label class="radio"><input name="quality" type="radio" value="none"> Без видео</label><br>
+                            {{quality | safe}}
+                        </td>
+                        <td>
+                            <label class="checkbox"><input name="voice" type="checkbox" value="none"> Без озвучек</label><br>
+                            <label class="checkbox"><input name="voice" type="checkbox" value="all"> Все озвучки</label><br>
+                            {{voice | safe}}
+                        </td>
+                        <td>
+                            <label class="checkbox"><input name="subtitles" type="checkbox" value="none"> Без субтитров</label><br>
+                            <label class="checkbox"><input name="subtitles" type="checkbox" value="all"> Все субтитры</label><br>
+                            {{subtitles | safe}}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <b>Внимание!</b><br>
+            В файле MP4 недоступен кодек VP9 (качество будет не выше чем 1080p) и ASS (субтитры будут не цветными).<br>
+            В файле MKV никаких ограничений нет.
+            <table width="100%">
+                <tr>
+                    <td align="left">
+                        {{captcha | safe}}
+                    </td>
+                    <td align="right">
+                        <input name="submit" type="submit" value="Собрать и скачать" style="width: 325px; height: 80px; font-size: 22pt;" disabled="">
+                    </td>
+                </tr>
+            </table>
+            <script>
+                validate();
+                bindEvents();
+            </script>
+        </form>
+    </body>
+</html>

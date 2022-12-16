@@ -1,0 +1,5 @@
+Flask[async]==2.2.2
+discord-webhook==1.0.0
+psutil==5.9.4
+pytz==2022.6
+waitress==2.1.2

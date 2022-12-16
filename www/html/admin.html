@@ -1,0 +1,38 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Административный</title>
+		<meta name="description" content="Административный"/>
+        <link rel="icon" href="/images/favicon.png" type="image/png"/>
+        <link rel="stylesheet" type="text/css" href="/css/admin.css"/>
+		<meta name="viewport" content="width=device-width, initial-scale=0.8"/>
+    </head>
+    <body>
+        <div class="main">
+            <div>Монитор:</div>
+            <iframe src="/monitor" frameborder="0" width="400" height="200" marginwidth="0" marginheight="0" scrolling="no"></iframe>
+            <div>Триггеры:</div>
+            <textarea cols="{{triggers_cols}}" rows="{{triggers_rows}}" readonly="">{{triggers_str}}</textarea>
+            <div>Настройки:</div>
+            <textarea cols="{{settings_cols}}" rows="{{settings_rows}}" readonly="">{{settings_str}}</textarea>
+            <div>Пользователи:</div>
+            <textarea cols="{{users_cols}}" rows="{{users_rows}}" readonly="">{{users_str}}</textarea>
+            <form id="form" method="post">
+                <div>Параметр:</div>
+                <input class="text" type="text" name="id">
+                <div>Значение:</div>
+                <input class="text" type="text" name="value">
+                <div style="padding-top: 10px;">
+                    <input class="submit" type="submit" value="Отправить" name="submit">
+                </div>
+            </form>
+            <form method="post">
+                <div style="padding-top: 50px;">
+                    <input class="submit" type="submit" value="Дебаг" name="debug">
+                    <input class="submit" type="submit" value="Перезагрузка" name="res">
+                </div>
+            </form>
+        </div>
+    </body>
+</html>

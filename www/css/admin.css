@@ -1,0 +1,66 @@
+@font-face {
+	font-family: celestia;
+	src: url("/fonts/celestia.eot") format("eot");
+	src: url("/fonts/celestia.otf") format("otf");
+	src: url("/fonts/celestia.svg") format("svg");
+	src: url("/fonts/celestia.ttf") format("truetype");
+	src: url("/fonts/celestia.woff") format("woff");
+	font-weight: 100;
+	font-style: normal;
+}
+
+body {
+    font-family: celestia !important;
+    font-size: 25px !important;
+    color: #67c1f5 !important;
+    background-color: #1b2838 !important;
+    text-align: center !important;
+}
+
+textarea, iframe {
+    margin: 15px !important;
+}
+
+select {
+    width: 310px !important;
+	height: 35px !important;
+    margin: 15px !important;
+    padding: 5px !important;
+	font-family: celestia !important;
+    font-size: 20px !important;
+    line-height: 21px !important;
+    background: #67c1f533 !important;
+    border: none !important;
+    color: #000 !important;
+    text-align: center !important;
+}
+
+.main {
+    background-color: #00000050 !important;
+    padding-top: 10px !important;
+    padding-bottom: 25px !important;
+}
+
+.text {
+    width: 300px !important;
+	height: 25px !important;
+    margin: 15px !important;
+    padding: 5px !important;
+	font-family: celestia !important;
+    font-size: 20px !important;
+    line-height: 21px !important;
+    background: #67c1f533 !important;
+    border: none !important;
+    color: #fff !important;
+    text-align: center !important;
+}
+
+.submit {
+    padding: 3px 50px !important;
+	font-family: celestia !important;
+    font-size: 20px !important;
+    line-height: 30px !important;
+    border: none !important;
+    color: #67c1f5 !important;
+    background: #67c1f533 !important;
+}
