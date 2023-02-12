@@ -17,35 +17,19 @@
                         Файл:
                         <div id="tooltip_1" class="tooltip" data-tooltip="Формат файла в котором он будет сохранен. В файле MP4 недоступны кодеки VP9 и ASS (качество будет не выше чем 1080p и субтитры будут не цветными). В файле MKV никаких ограничений нет."></div>
                     </th>
+                </tr>
+                <tr align="left" valign="top">
                     <td>
-                        <label class="radio"><input name="format" type="radio" value="mkv"/> .mkv</label>
-                    </td>
-                    <td>
-                        <label class="radio"><input name="format" type="radio" value="mp4"/> .mp4</label>
+                        <label class="radio"><input name="format" type="radio" value="mkv"/> .mkv</label><br>
+                        <label class="radio"><input name="format" type="radio" value="mp4"/> .mp4</label><br><br>
                     </td>
                 </tr>
-            </table>
-            <table>
                 <tr align="left" valign="top">
                     {% if videos %}
                         <th>
                             <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_2').style.display='block';" onmouseout="document.getElementById('tooltip_2').style.display='none';"/>
                             Качество:
                             <div id="tooltip_2" class="tooltip" data-tooltip="Разрешение видео, которое будет сохранено в файле. Если вы выбрали формат MP4, то выбрать качество выше 1080 вы не сможете. Одновременно можно выбрать только одно качество. Если выбрать вариант 'Без видео' то выбранные озвучки и/или субтитры будут сохранены в ZIP архиве."></div>
-                        </th>
-                    {% endif %}
-                    {% if dubs %}
-                        <th>
-                            <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_3').style.display='block';" onmouseout="document.getElementById('tooltip_3').style.display='none';"/>
-                            Озвучки:
-                            <div id="tooltip_3" class="tooltip" data-tooltip="Звуковые дорожки, которые будут сохранены в файле. Выбрать можно любое количество. По умолчанию в итоговом видео будет установлена только первая дорожка. Если выбрать вариант 'Без озвучек' то видео будет абсолютно без звука."></div>
-                        </th>
-                    {% endif %}
-                    {% if subs %}
-                        <th>
-                            <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_4').style.display='block';" onmouseout="document.getElementById('tooltip_4').style.display='none';"/>
-                            Субтитры:
-                            <div id="tooltip_4" class="tooltip" data-tooltip="Субтитры (если такие имеются в этом эпизоде), которые будут сохранены в файле. Выбрать можно любое количество. По умолчанию все субтитры отключены в итоговом видео, их нужно включать в ручную. Если выбрать вариант 'Без субтитров' то в видео не будет никаких субтитров."></div>
                         </th>
                     {% endif %}
                 </tr>
@@ -58,6 +42,17 @@
                             {% endfor %}
                         </td>
                     {% endif %}
+                </tr>
+                <tr align="left" valign="top">
+                    {% if dubs %}
+                        <th>
+                            <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_3').style.display='block';" onmouseout="document.getElementById('tooltip_3').style.display='none';"/>
+                            Озвучки:
+                            <div id="tooltip_3" class="tooltip" data-tooltip="Звуковые дорожки, которые будут сохранены в файле. Выбрать можно любое количество. По умолчанию в итоговом видео будет установлена только первая дорожка. Если выбрать вариант 'Без озвучек' то видео будет абсолютно без звука."></div>
+                        </th>
+                    {% endif %}
+                </tr>
+                <tr align="left" valign="top">
                     {% if dubs %}
                         <td>
                             <label class="checkbox"><input name="voice" type="checkbox" value="none"/> Без озвучек</label><br>
@@ -67,6 +62,17 @@
                             {% endfor %}
                         </td>
                     {% endif %}
+                </tr>
+                <tr align="left" valign="top">
+                    {% if subs %}
+                        <th>
+                            <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_4').style.display='block';" onmouseout="document.getElementById('tooltip_4').style.display='none';"/>
+                            Субтитры:
+                            <div id="tooltip_4" class="tooltip" data-tooltip="Субтитры (если такие имеются в этом эпизоде), которые будут сохранены в файле. Выбрать можно любое количество. По умолчанию все субтитры отключены в итоговом видео, их нужно включать в ручную. Если выбрать вариант 'Без субтитров' то в видео не будет никаких субтитров."></div>
+                        </th>
+                    {% endif %}
+                </tr>
+                <tr align="left" valign="top">
                     {% if subs %}
                         <td>
                             <label class="checkbox"><input name="subtitles" type="checkbox" value="none"/> Без субтитров</label><br>
@@ -77,10 +83,8 @@
                         </td>
                     {% endif %}
                 </tr>
-            </table>
-            <table width="100%">
                 <tr align="left" valign="top">
-                    <td width="50%">
+                    <td>
                         {% if captcha %}
                             <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_6').style.display='block';" onmouseout="document.getElementById('tooltip_6').style.display='none';"/>
                             <div id="tooltip_6" class="tooltip" style="width: 0px; height: 0px; display: none;" data-tooltip="Для сборки файла обязательно нужно пройти каптчу. Каптча появляется если вы собрали больше {{ captcha['files'] }} файлов за {{ captcha['minutes'] }} минут."></div>
@@ -93,8 +97,6 @@
                             {% endif %}
                             <div class="g-recaptcha" data-sitekey="6LcuV3QjAAAAAHLww7kTnzj8BCkldDkysT54xfBB"></div>
                         {% endif %}
-                    </td>
-                    <td width="50%">
                         <img width="20" height="20" src="/images/info.png" onmouseover="document.getElementById('tooltip_5').style.display='block';" onmouseout="document.getElementById('tooltip_5').style.display='none';"/><br>
                         <div id="tooltip_5" class="tooltip" data-tooltip="Для сборки файла обязательно нужно выбрать формат файла, и хотя бы один пункт в каждой категории. Если в категории нет нужных вам пунктов, выберите вариант 'Без ...'. Выбрать варианты 'Без ...' во всех категориях сразу тоже нельзя."></div>
                         <input class="submit" name="submit" type="submit" value="Собрать и скачать" disabled=""/>

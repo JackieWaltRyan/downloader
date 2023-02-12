@@ -5,10 +5,15 @@
         <title>Монитор ресурсов</title>
         <meta http-equiv="refresh" content="1"/>
 		<meta name="description" content="Монитор ресурсов"/>
-        <link rel="icon" href="/images/favicon.png" type="image/png"/>
+        <link rel="icon" type="image/png" href="/images/favicon.png"/>
+        {% if not clear %}
+            <link rel="stylesheet" type="text/css" href="/css/admin.css"/>
+        {% endif %}
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     </head>
     <body>
-        <textarea cols="55" rows="{{monitor_rows}}" readonly="">{{monitor_str}}</textarea>
+        <div class="main">
+            <textarea cols="55" rows="{{ monitor_rows }}" readonly="">{{ monitor_str }}</textarea>
+        </div>
     </body>
 </html>

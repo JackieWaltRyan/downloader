@@ -1,0 +1,39 @@
+body {
+    background-color: #CDF;
+}
+
+table {
+    font-size: 14pt;
+}
+
+.tooltip {
+    width: 0px;
+    height: 0px;
+    display: none;
+}
+
+.submit {
+    width: 325px;
+    height: 80px;
+    font-size: 22pt;
+}
+
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    width: 300px;
+    background: #3989c9;
+    color: #fff;
+    padding: 0.5em;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    opacity: 1;
+    transition: 0s;
+    left: 1em;
+    font-size: 13px;
+    font-weight: bold;
+}

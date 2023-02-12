@@ -2,18 +2,17 @@
 <html lang="ru">
     <head>
         <meta charset="utf-8"/>
-        <link rel="icon" href="/images/favicon.png" type="image/png"/>
+        <link rel="icon" type="image/png" href="/images/favicon.png"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <link rel="stylesheet" type="text/css" href="https://bronyru.info/_design/style.css"/>
     </head>
-    <body id="FramedText" align="center">
+    <body id="FramedText" align="center" style="background-color: #CDF;">
         <h2>На сервере обработки данных произошла ошибка!</h2>
         <h3>Пожалуйста обновите страницу и попробуйте еще раз.<br>
         Если ошибка возникает регулярно, пожалуйста свяжитесь со мной для оперативного решения проблемы:<br><br>
-        <a href="//4pda.to/forum/index.php?showuser=8394828" target="_blank">4PDA</a><br>
-        <a href="//discord.gg/WgYWwmpqjA" target="_blank">Discord</a><br>
-        <a href="mailto:jwrreo@gmail.com" target="_blank">Gmail</a><br><br>
+        <a href="//4pda.to/forum/index.php?showuser=8394828" target="_blank">4PDA</a> или <a href="//discord.gg/WgYWwmpqjA" target="_blank">Discord</a> или <a href="mailto:jwrreo@gmail.com" target="_blank">Gmail</a><br><br>
         И сообщите мне эти данные:<br><br>
-        Time: {{time}}</h3>
+        Time: {{ time }}</h3><br><br>
+        <button onclick="javascript:history.back(); return false;" style="width: 325px; height: 80px; font-size: 22pt;">Вернуться назад</button>
     </body>
 </html>

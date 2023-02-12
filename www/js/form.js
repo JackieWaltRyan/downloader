@@ -38,6 +38,16 @@ var relations = {
                 var voiceValues = getCheckboxGroupValues("voice");
                 var subtitlesValues = getCheckboxGroupValues("subtitles");
 
+                if (document.querySelectorAll('input[name="quality"]').length === 0) {
+                    qualityValue = "none"
+                }
+                if (document.querySelectorAll('input[name="voice"]').length === 0) {
+                    voiceValues = ["none"]
+                }
+                if (document.querySelectorAll('input[name="subtitles"]').length === 0) {
+                    subtitlesValues = ["none"]
+                }
+
                 if (qualityValue === "none" && voiceValues.includes("none") && subtitlesValues.includes("none")) return false;
                 if (!formatValue || !qualityValue || voiceValues.length === 0 || subtitlesValues.length === 0) return false;
 
