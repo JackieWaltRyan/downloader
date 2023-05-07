@@ -6,10 +6,35 @@ table {
     font-size: 14pt;
 }
 
+tr {
+    text-align: left;
+    vertical-align: top;
+}
+
+button {
+    width: 325px;
+    height: 80px;
+    font-size: 22pt;
+}
+
+#FramedText {
+    text-align: center;
+    background-color: #CDF;
+}
+
+#t_1 {
+    width: 100%;
+}
+
+.t_2 {
+    width: 50%;
+}
+
 .tooltip {
-    width: 0px;
-    height: 0px;
+    width: 0;
+    height: 0;
     display: none;
+    z-index: 999999999;
 }
 
 .submit {

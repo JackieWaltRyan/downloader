@@ -1,0 +1,225 @@
+#ponyacha {
+    background-color: white;
+    height: 75px;
+    width: 300px;
+    border-radius: 3px;
+    box-shadow: 0 0 1px 1px #00000050;
+    cursor: pointer;
+    user-select: none;
+}
+
+#ponyacha_checkbox {
+    width: 225px;
+    height: 100%;
+    display: inline-block;
+}
+
+#ponyacha_checkbox_filter {
+    display: none;
+    width: 28px;
+    height: 28px;
+    margin-top: 23px;
+    margin-left: 15px;
+    background-color: red;
+    position: absolute;
+    filter: opacity(0.5);
+}
+
+#ponyacha_checkbox_logo {
+    margin-top: 23px;
+    margin-left: 15px;
+}
+
+#ponyacha_checkbox_logo:hover {
+    filter: brightness(0.5);
+}
+
+#ponyacha_checkbox_spinner {
+    display: none;
+    margin-top: 23px;
+    margin-left: 15px;
+    animation: 1s linear 0s normal none infinite running ponyacha_checkbox_spinner;
+}
+
+@keyframes ponyacha_checkbox_spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#ponyacha_checkbox_check {
+    display: none;
+    margin-top: 23px;
+    margin-left: 15px;
+}
+
+#ponyacha_checkbox_text {
+    font-family: Roboto, helvetica, arial, sans-serif;
+    font-size: 14px;
+    margin-top: 30px;
+    margin-left: 10px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+#ponyacha_checkbox_text_error {
+    display: none;
+    color: red;
+}
+
+#ponyacha_logo {
+    height: 100%;
+    vertical-align: top;
+    display: inline-block;
+}
+
+#ponyacha_logo_icon {
+    height: 40px;
+    margin-top: 10px;
+    margin-left: 10px;
+}
+
+#ponyacha_logo_text {
+    color: #555;
+    font-family: Roboto, helvetica, arial, sans-serif;
+    font-size: 10px;
+}
+
+#ponyacha_box_hide {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    z-index: 500000000;
+    cursor: default;
+}
+
+#ponyacha_box {
+    background-color: white;
+    border: 1px solid #cccccc;
+    box-shadow: #00000033 3px 3px 5px;
+    position: absolute;
+    z-index: 1000000000;
+    width: 360px;
+    cursor: default;
+}
+
+#ponyacha_box_header {
+    margin: 7px;
+    padding: 10px;
+    background-color: #1a73e8;
+    height: 95px;
+    font-size: 16px;
+    font-family: Roboto, helvetica,arial, sans-serif;
+    color: white;
+}
+
+#ponyacha_box_header_description {
+    padding-right: 100px;
+}
+
+#ponyacha_box_header_description_strong {
+    font-size: 25px;
+}
+
+#ponyacha_box_header_image {
+    height: 95px;
+    position: absolute;
+    right: 17px;
+    top: 17px;
+}
+
+#ponyacha_box_body_table {
+    margin: 3px;
+    border-spacing: 0;
+}
+
+#ponyacha_box_body_error {
+    display: none;
+    color: #d14836;
+    font-size: 15px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+#ponyacha_box_footer {
+    min-width: 240px;
+    font-family: Roboto,helvetica,arial,sans-serif;
+    position: relative;
+    width: 100%;
+    height: 60px;
+}
+
+#ponyacha_box_footer_separator {
+    border-top: 1px solid #dfdfdf;
+    margin-bottom: 1px;
+}
+
+#ponyacha_box_footer_reload {
+    height: 32px;
+    width: 32px;
+    margin: 13px;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+#ponyacha_box_footer_reload:hover {
+    opacity: 1;
+}
+
+#ponyacha_box_footer_confirm {
+    float: right;
+    margin: 8px;
+    background: #1a73e8;
+    border: 0;
+    border-radius: 2px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    height: 42px;
+    padding: 0 10px 0 10px;
+    text-transform: uppercase;
+}
+
+#ponyacha_label {
+    display: none;
+}
+
+.ponyacha_box_body_table_td {
+    padding: 3px;
+}
+
+.ponyacha_box_body_table_tbody_td_image {
+    width: 112px;
+    height: 112px;
+    transition: .1s ease;
+    cursor: pointer;
+}
+
+.ponyacha_box_body_table_tbody_td_checkbox_1 {
+    display: none;
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    left: 2%;
+}
+
+.ponyacha_box_body_table_tbody_td_checkbox_2 {
+    display: none;
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    left: 34%;
+}
+
+.ponyacha_box_body_table_tbody_td_checkbox_3 {
+    display: none;
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    left: 67%;
+}

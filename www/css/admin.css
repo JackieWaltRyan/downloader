@@ -1,66 +1,94 @@
 @font-face {
-	font-family: celestia;
-	src: url("/fonts/celestia.eot") format("eot");
-	src: url("/fonts/celestia.otf") format("otf");
-	src: url("/fonts/celestia.svg") format("svg");
-	src: url("/fonts/celestia.ttf") format("truetype");
-	src: url("/fonts/celestia.woff") format("woff");
-	font-weight: 100;
-	font-style: normal;
+    font-family: celestia;
+    src: url("/fonts/celestia.eot") format("eot");
+    src: url("/fonts/celestia.otf") format("otf");
+    src: url("/fonts/celestia.svg") format("svg");
+    src: url("/fonts/celestia.ttf") format("truetype");
+    src: url("/fonts/celestia.woff") format("woff");
+    font-weight: 100;
+    font-style: normal;
 }
 
 body {
-    font-family: celestia !important;
-    font-size: 25px !important;
-    color: #67c1f5 !important;
-    background-color: #1b2838 !important;
-    text-align: center !important;
+    font-family: celestia, serif;
+    font-size: 25px;
+    color: #67c1f5;
+    background-color: #1b2838;
+    text-align: center;
 }
 
-textarea, iframe {
-    margin: 15px !important;
+table {
+    margin: auto;
+    width: 400px;
+}
+
+iframe {
+    width: 400px;
+    height: 200px;
+    border: 0;
+    margin-top: 15px;
+}
+
+textarea {
+    width: 400px;
+    margin-top: 15px;
 }
 
 select {
-    width: 310px !important;
-	height: 35px !important;
-    margin: 15px !important;
-    padding: 5px !important;
-	font-family: celestia !important;
-    font-size: 20px !important;
-    line-height: 21px !important;
-    background: #67c1f533 !important;
-    border: none !important;
-    color: #000 !important;
-    text-align: center !important;
+    width: 400px;
+    margin: 15px 0;
+    border: 0;
+    padding: 5px 0;
+    font-family: celestia, serif;
+    font-size: 20px;
+    background: #67c1f533;
+    text-align: center;
 }
 
-.main {
-    background-color: #00000050 !important;
-    padding-top: 10px !important;
-    padding-bottom: 25px !important;
+input {
+    width: 400px;
+    margin: 15px 0;
+    border: 0;
+}
+
+#background {
+    background-color: #00000050;
+    padding: 5px;
+    position: fixed;
+    width: 98%;
+    height: 97%;
+    z-index: -1;
 }
 
 .text {
-    width: 300px !important;
-	height: 25px !important;
-    margin: 15px !important;
-    padding: 5px !important;
-	font-family: celestia !important;
-    font-size: 20px !important;
-    line-height: 21px !important;
-    background: #67c1f533 !important;
-    border: none !important;
-    color: #fff !important;
-    text-align: center !important;
+    padding: 5px 0;
+    font-family: celestia, serif;
+    font-size: 20px;
+    background: #67c1f533;
+    color: #fff;
+    text-align: center;
 }
 
 .submit {
-    padding: 3px 50px !important;
-	font-family: celestia !important;
-    font-size: 20px !important;
-    line-height: 30px !important;
-    border: none !important;
-    color: #67c1f5 !important;
-    background: #67c1f533 !important;
+    padding: 5px 0;
+    font-family: celestia, serif;
+    font-size: 20px;
+    line-height: 30px;
+    color: #67c1f5;
+    background: #67c1f533;
+}
+
+.submit_50 {
+    width: 48%;
+    padding: 5px 0;
+    font-family: celestia, serif;
+    font-size: 20px;
+    line-height: 30px;
+    color: #67c1f5;
+    background: #67c1f533;
+}
+
+.alert {
+    color: red;
+    font-size: 20px;
 }

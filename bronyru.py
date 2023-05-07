@@ -1,24 +1,24 @@
-from sys import executable
-from time import time as t_time
-
 from asyncio import run, sleep, new_event_loop, run_coroutine_threadsafe
 from datetime import datetime
-from discord_webhook import AsyncDiscordWebhook, DiscordEmbed
-from flask import Flask, request, send_file, redirect, url_for, render_template_string, session
 from functools import partial
 from hashlib import sha256
 from json import loads
 from os import makedirs, walk, remove, execl, rmdir, getpid, listdir
-from os.path import exists, join, isfile, getsize, getmtime
-from psutil import cpu_percent, virtual_memory, disk_partitions, disk_usage
-from pytz import timezone
+from os.path import exists, join, isfile, isdir, getsize, getmtime
 from random import random
 from re import sub as r_sub
-from requests import get
 from subprocess import run as s_run
+from sys import executable
 from threading import Timer, Thread
+from time import time as t_time
 from traceback import format_exc
 from urllib.parse import quote
+
+from discord_webhook import AsyncDiscordWebhook, DiscordEmbed
+from flask import Flask, request, send_file, redirect, url_for, render_template_string, session
+from psutil import cpu_percent, virtual_memory, disk_partitions, disk_usage
+from pytz import timezone
+from requests import get
 from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -26,13 +26,11 @@ APP, LEVELS, TRIGGER = Flask(import_name=__name__), {"DEBUG": 0x0000FF,
                                                      "INFO": 0x008000,
                                                      "WARNING": 0xFFFF00,
                                                      "ERROR": 0xFFA500,
-                                                     "CRITICAL": 0xFF0000}, {"Сохранение": False,
-                                                                             "Бэкап": False,
-                                                                             "Очистка": False}
-TIME = str(datetime.now(tz=timezone(zone="Europe/Moscow")))[:-13].replace(" ", "_").replace("-", "_").replace(":", "_")
+                                                     "CRITICAL": 0xFF0000}, {"Сохранение": False}
 APP.secret_key = b""
+APP.wsgi_app = ProxyFix(app=APP.wsgi_app)  # type: ignore
+TIME = str(datetime.now(tz=timezone(zone="Europe/Moscow")))[:-13].replace(" ", "_").replace("-", "_").replace(":", "_")
 ADMINS = {"JackieRyan": ""}
-APP.wsgi_app = ProxyFix(app=APP.wsgi_app)
 
 
 async def logs(level, message, file=None):
@@ -49,7 +47,8 @@ async def logs(level, message, file=None):
                   encoding="UTF-8") as log_file:
             log_file.write(f"{datetime.now(tz=timezone(zone='Europe/Moscow'))} {level}:\n{message}\n\n")
         webhook = AsyncDiscordWebhook(username="Магия Дружбы",
-                                      avatar_url="",
+                                      avatar_url="https://cdn.discordapp.com/attachments/1021085537802649661/"
+                                                 "1051579517564616815/bronyru.png",
                                       url="")
         if len(message) <= 4096:
             webhook.add_embed(embed=DiscordEmbed(title=level,
@@ -77,7 +76,7 @@ async def save(file, content):
                 TRIGGER["Сохранение"] = True
                 if not exists(path="db"):
                     makedirs(name="db")
-                if file in ["settings", "users"]:
+                if file in ["users"]:
                     with open(file=f"db/{file}.py",
                               mode="w",
                               encoding="UTF-8") as db_py:
@@ -100,33 +99,24 @@ async def save(file, content):
 
 async def backup():
     try:
-        from db.settings import settings
-        if (datetime.utcnow() - settings["Дата обновления"]).days >= 1:
-            if not TRIGGER["Бэкап"]:
-                TRIGGER["Бэкап"] = True
-                if not exists(path="temp/db"):
-                    makedirs(name="temp/db")
-                date = str(datetime.now(tz=timezone(zone="Europe/Moscow")))[:-13]
-                time = date.replace(" ", "_").replace("-", "_").replace(":", "_")
-                result = s_run(args=f"zip -9 -r temp/db/bronyru_{time}.zip db",
-                               shell=True,
-                               capture_output=True,
-                               text=True,
-                               encoding="UTF-8",
-                               errors="ignore")
-                try:
-                    result.check_returncode()
-                except Exception:
-                    raise Exception(result.stderr)
-                settings["Дата обновления"] = datetime.utcnow()
-                await save(file="settings",
-                           content=settings)
-                await logs(level="INFO",
-                           message=f"Бэкап БД создан успешно!",
-                           file=f"bronyru_{time}.zip")
-                TRIGGER["Бэкап"] = False
+        date = str(datetime.now(tz=timezone(zone="Europe/Moscow")))[:-13]
+        time = date.replace(" ", "_").replace("-", "_").replace(":", "_")
+        if not exists(path="temp/db"):
+            makedirs(name="temp/db")
+        result = s_run(args=f"zip -9 -r temp/db/bronyru_{time}.zip db",
+                       shell=True,
+                       capture_output=True,
+                       text=True,
+                       encoding="UTF-8",
+                       errors="ignore")
+        try:
+            result.check_returncode()
+        except Exception:
+            raise Exception(result.stderr)
+        await logs(level="INFO",
+                   message=f"Бэкап БД создан успешно!",
+                   file=f"bronyru_{time}.zip")
     except Exception:
-        TRIGGER["Бэкап"] = False
         await logs(level="ERROR",
                    message=format_exc())
 
@@ -146,44 +136,36 @@ async def restart():
 
 async def delete():
     try:
-        from db.settings import settings
-        if (datetime.utcnow() - settings["Дата очистки"]).seconds >= 3600:
-            if not TRIGGER["Очистка"]:
-                TRIGGER["Очистка"] = True
-                for root, dirs, filess in walk(top=f"{settings['Временная папка']}/bronyru"):
-                    for file in filess:
-                        delta = int(t_time() - getmtime(filename=join(root, file)))
-                        if delta >= int(settings["Время хранения"]) * 60 * 60:
-                            try:
-                                remove(path=join(root, file))
-                            except Exception:
-                                await logs(level="DEBUG",
-                                           message=format_exc())
-                    for dirr in dirs:
-                        for roott, dirss, filesss in walk(top=join(root, dirr)):
-                            if len(filesss) == 0:
-                                rmdir(path=join(root, dirr))
-                settings["Дата очистки"] = datetime.utcnow()
-                await save(file="settings",
-                           content=settings)
-                TRIGGER["Очистка"] = False
+        for root, dirs, files in walk(top=f"{settings['Временная папка']}/bronyru"):
+            for file in files:
+                delta = int(t_time() - getmtime(filename=join(root, file)))
+                if delta >= int(settings["Время хранения"]) * 60 * 60:
+                    try:
+                        remove(path=join(root, file))
+                    except Exception:
+                        await logs(level="DEBUG",
+                                   message=format_exc())
+            for folder in dirs:
+                if len(listdir(path=join(root, folder))) == 0:
+                    rmdir(path=join(root, folder))
     except Exception:
-        TRIGGER["Очистка"] = False
         await logs(level="ERROR",
                    message=format_exc())
 
 
 async def autores():
     try:
-        print(f"bronyru: {int(datetime.now(tz=timezone(zone='Europe/Moscow')).strftime('%H%M%S'))}")
+        time = int(datetime.now(tz=timezone(zone="Europe/Moscow")).strftime("%H%M%S"))
+        print(f"bronyru: {time}")
+        if time == 0 or time == 120000:
+            await backup()
+            await delete()
         try:
             if len(listdir(path=f"/proc/{getpid()}/fd")) > 1000:
                 await restart()
         except Exception:
             await logs(level="DEBUG",
                        message=format_exc())
-        await backup()
-        await delete()
         Timer(interval=1,
               function=partial(run, main=autores())).start()
     except Exception:
@@ -209,10 +191,10 @@ async def data_form(content, name, mobile, message=None):
                 captcha = {"files": settings["Файлы каптчи"],
                            "minutes": settings["Время каптчи"],
                            "message": message}
-        with open(file=f"www/html/form.html",
+        with open(file=f"www/html/forms/form.html",
                   mode="r",
                   encoding="UTF-8") as form_html:
-            with open(file=f"www/html/mobile/form.html",
+            with open(file=f"www/html/forms/mobile/form.html",
                       mode="r",
                       encoding="UTF-8") as mobile_form_html:
                 return render_template_string(source=mobile_form_html.read() if mobile else form_html.read(),
@@ -225,14 +207,9 @@ async def data_form(content, name, mobile, message=None):
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"www/html/error.html",
-                  mode="r",
-                  encoding="UTF-8") as error_html:
-            return render_template_string(source=error_html.read(),
-                                          time=datetime.now(tz=timezone(zone="Europe/Moscow")))
 
 
-async def create_zip(tt, ttt, files_str, t_folder, t_file):
+async def create_zip(files_str, ttt, tt):
     try:
         from db.settings import settings
         result = s_run(args=f"zip -9 -j '{ttt}.zip' {files_str}",
@@ -245,34 +222,16 @@ async def create_zip(tt, ttt, files_str, t_folder, t_file):
             result.check_returncode()
         except Exception:
             raise Exception(result.stderr)
-        if isfile(path=f"{ttt}.zip"):
-            with open(file=f"{tt}/index.html",
-                      mode="w",
-                      encoding="UTF-8") as index_html:
-                with open(file=f"www/html/files.html",
-                          mode="r",
-                          encoding="UTF-8") as files_html:
-                    index_html.write(render_template_string(source=files_html.read(),
-                                                            domen=settings["Домен"],
-                                                            folder=t_folder,
-                                                            file=f"{t_file}.zip",
-                                                            size=int(getsize(filename=f"{ttt}.zip") / 1024 / 1024)))
-        else:
+        if not isfile(path=f"{ttt}.zip"):
             raise Exception(result.args, result.stderr)
+        if isfile(path=f"{tt}/create.temp"):
+            remove(path=f"{tt}/create.temp")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"{tt}/index.html",
-                  mode="w",
-                  encoding="UTF-8") as index_html:
-            with open(file=f"www/html/error.html",
-                      mode="r",
-                      encoding="UTF-8") as error_html:
-                index_html.write(render_template_string(source=error_html.read(),
-                                                        time=datetime.now(tz=timezone(zone="Europe/Moscow"))))
 
 
-async def create_mkv(video, voice_str, sub_str, map_str, meta_str, ttt, tt, t_folder, t_file):
+async def create_mkv(video, voice_str, sub_str, map_str, meta_str, ttt, tt):
     try:
         from db.settings import settings
         result = s_run(args=f"bin/ffmpeg/ffmpeg -i {video} {voice_str} {sub_str} -map 0 {map_str} -c:v copy -c:a copy "
@@ -286,34 +245,16 @@ async def create_mkv(video, voice_str, sub_str, map_str, meta_str, ttt, tt, t_fo
             result.check_returncode()
         except Exception:
             raise Exception(result.stderr)
-        if isfile(path=f"{ttt}.mkv"):
-            with open(file=f"{tt}/index.html",
-                      mode="w",
-                      encoding="UTF-8") as index_html:
-                with open(file=f"www/html/files.html",
-                          mode="r",
-                          encoding="UTF-8") as files_html:
-                    index_html.write(render_template_string(source=files_html.read(),
-                                                            domen=settings["Домен"],
-                                                            folder=t_folder,
-                                                            file=f"{t_file}.mkv",
-                                                            size=int(getsize(filename=f"{ttt}.mkv") / 1024 / 1024)))
-        else:
+        if not isfile(path=f"{ttt}.mkv"):
             raise Exception(result.args, result.stderr)
+        if isfile(path=f"{tt}/create.temp"):
+            remove(path=f"{tt}/create.temp")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"{tt}/index.html",
-                  mode="w",
-                  encoding="UTF-8") as index_html:
-            with open(file=f"www/html/error.html",
-                      mode="r",
-                      encoding="UTF-8") as error_html:
-                index_html.write(render_template_string(source=error_html.read(),
-                                                        time=datetime.now(tz=timezone(zone="Europe/Moscow"))))
 
 
-async def create_mp4(video, voice_str, sub_str, map_str, meta_str, disposition_str, ttt, tt, t_folder, t_file):
+async def create_mp4(video, voice_str, sub_str, map_str, meta_str, disposition_str, ttt, tt):
     try:
         from db.settings import settings
         result = s_run(args=f"bin/ffmpeg/ffmpeg -i {video} {voice_str} {sub_str} -map 0 {map_str} -c:v copy -c:a copy "
@@ -327,31 +268,13 @@ async def create_mp4(video, voice_str, sub_str, map_str, meta_str, disposition_s
             result.check_returncode()
         except Exception:
             raise Exception(result.stderr)
-        if isfile(path=f"{ttt}.mp4"):
-            with open(file=f"{tt}/index.html",
-                      mode="w",
-                      encoding="UTF-8") as index_html:
-                with open(file=f"www/html/files.html",
-                          mode="r",
-                          encoding="UTF-8") as files_html:
-                    index_html.write(render_template_string(source=files_html.read(),
-                                                            domen=settings["Домен"],
-                                                            folder=t_folder,
-                                                            file=f"{t_file}.mp4",
-                                                            size=int(getsize(filename=f"{ttt}.mp4") / 1024 / 1024)))
-        else:
+        if not isfile(path=f"{ttt}.mp4"):
             raise Exception(result.args, result.stderr)
+        if isfile(path=f"{tt}/create.temp"):
+            remove(path=f"{tt}/create.temp")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"{tt}/index.html",
-                  mode="w",
-                  encoding="UTF-8") as index_html:
-            with open(file=f"www/html/error.html",
-                      mode="r",
-                      encoding="UTF-8") as error_html:
-                index_html.write(render_template_string(source=error_html.read(),
-                                                        time=datetime.now(tz=timezone(zone="Europe/Moscow"))))
 
 
 async def data_admin(error=None):
@@ -381,7 +304,7 @@ async def data_admin(error=None):
                             users_cols = len(f"    {value}: {users[user][value]}\n") + 5
                         users_rows += 1
                     users_rows += 1
-                with open(file=f"www/html/admin.html",
+                with open(file=f"www/html/admins/admin.html",
                           mode="r",
                           encoding="UTF-8") as admin_html:
                     return render_template_string(source=admin_html.read(),
@@ -395,7 +318,7 @@ async def data_admin(error=None):
                                                   users_cols=users_cols,
                                                   users_rows=users_rows,
                                                   error=error)
-        with open(file=f"www/html/login.html",
+        with open(file=f"www/html/admins/login.html",
                   mode="r",
                   encoding="UTF-8") as login_html:
             return render_template_string(source=login_html.read(),
@@ -433,83 +356,76 @@ async def url_home(name):
                                                   "Время": datetime.utcnow()}
             await save(file="users",
                        content=users)
-            if "g-recaptcha-response" in request.form:
-                if len(request.form['g-recaptcha-response']) > 0:
-                    text = loads(s=get(url=f"https://www.google.com/recaptcha/api/siteverify?secret=&response="
-                                           f"{request.form['g-recaptcha-response']}").text)
-                    if text["success"]:
-                        from db.users import users
-                        users[request.remote_addr] = {"Запросов": 0,
-                                                      "Время": datetime.utcnow()}
-                        await save(file="users",
-                                   content=users)
-                    else:
-                        return await data_form(content=content,
-                                               name=quote(string=name,
-                                                          safe=""),
-                                               mobile=True if "mobile" in request.args else False,
-                                               message=1)
-                else:
-                    return await data_form(content=content,
-                                           name=quote(string=name,
-                                                      safe=""),
-                                           mobile=True if "mobile" in request.args else False,
-                                           message=2)
-            form_data, episode_id, title_en = request.form.to_dict(flat=False), 0, ""
+            if "ponyacha" in request.form:
+                from db.users import users
+                users[request.remote_addr] = {"Запросов": 0,
+                                              "Время": datetime.utcnow()}
+                await save(file="users",
+                           content=users)
+            form_data, episode_id, title_en, not_found, files_str = request.form.to_dict(flat=False), 0, "", [], ""
             from db.settings import settings
-            t_path, t_folder = f"{settings['Временная папка']}/bronyru", f"{t_time()}_{random()}".replace(".", "_")
-            if not exists(path=f"{t_path}/{t_folder}"):
-                makedirs(name=f"{t_path}/{t_folder}")
+            temp_path, user = f"{settings['Временная папка']}/bronyru", f"{t_time()}_{random()}".replace(".", "_")
+            if not exists(path=f"{temp_path}/{user}"):
+                makedirs(name=f"{temp_path}/{user}")
             for item in content["translations"]:
                 if item["locale"] == "en":
                     title_en = r_sub(pattern=r"[^\d\s\w]",
                                      repl="",
                                      string=item["title"]).replace("  ", " ")
                     episode_id = item["episodeId"]
-            t_file = f"{episode_id}. {title_en}".encode(encoding="ISO-8859-1",
-                                                        errors="ignore").decode(encoding="UTF-8").replace("  ", " ")
-            tt, ttt = f"{t_path}/{t_folder}", f"{t_path}/{t_folder}/{t_file}"
+            file = f"{episode_id}. {title_en}".encode(encoding="ISO-8859-1",
+                                                      errors="ignore").decode(encoding="UTF-8",
+                                                                              errors="ignore").replace("  ", " ")
             if "quality" not in form_data:
                 form_data["quality"].append("none")
             if form_data["quality"][0] == "none":
-                files_str = ""
                 if "voice" in form_data:
                     if "all" in form_data["voice"] and "none" not in form_data["voice"]:
                         for dubs in content["dubs"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{dubs['code']}.mp4"
-                            if isfile(path=file):
-                                files_str += f"{file} "
+                            dubs_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{dubs['code']}.mp4"
+                            if isfile(path=dubs_file):
+                                files_str += f"{dubs_file} "
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{dubs_file}\n")
                     if "none" not in form_data["voice"] and "all" not in form_data["voice"]:
                         for voice in form_data["voice"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{voice}.mp4"
-                            if isfile(path=file):
-                                files_str += f"{file} "
+                            voice_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{voice}.mp4"
+                            if isfile(path=voice_file):
+                                files_str += f"{voice_file} "
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{voice_file}\n")
                 if "subtitles" in form_data:
                     if "all" in form_data["subtitles"] and "none" not in form_data["subtitles"]:
                         for subs in content["subs"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subs['code']}.ass"
-                            if isfile(path=file):
-                                files_str += f"{file} "
+                            subs_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subs['code']}.ass"
+                            if isfile(path=subs_file):
+                                files_str += f"{subs_file} "
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{subs_file}\n")
                     if "none" not in form_data["subtitles"] and "all" not in form_data["subtitles"]:
                         for subtitles in form_data["subtitles"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subtitles}.ass"
-                            if isfile(path=file):
-                                files_str += f"{file} "
+                            subtitles_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subtitles}.ass"
+                            if isfile(path=subtitles_file):
+                                files_str += f"{subtitles_file} "
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{subtitles_file}\n")
+                if len(not_found) > 0:
+                    await logs(level="ERROR",
+                               message=f"Files not found: {''.join(not_found)}")
+                    with open(file=f"www/html/forms/notfound.html",
+                              mode="r",
+                              encoding="UTF-8") as notfound_html:
+                        return render_template_string(source=notfound_html.read(),
+                                                      files=not_found)
+                with open(file=f"{temp_path}/{user}/create.temp",
+                          mode="w",
+                          encoding="UTF-8") as create_temp:
+                    create_temp.close()
                 loop = new_event_loop()
                 Thread(target=loop.run_forever).start()
-                run_coroutine_threadsafe(coro=create_zip(tt=tt,
-                                                         ttt=ttt,
-                                                         files_str=files_str,
-                                                         t_folder=t_folder,
-                                                         t_file=t_file),
+                run_coroutine_threadsafe(coro=create_zip(files_str=files_str,
+                                                         ttt=f"{temp_path}/{user}/{file}",
+                                                         tt=f"{temp_path}/{user}"),
                                          loop=loop)
             else:
                 format_str, voice_str, sub_str, i, map_str, meta_str, disposition_str = "mp4", "", "", 1, "", "", ""
@@ -517,14 +433,14 @@ async def url_home(name):
                     format_str = "webm"
                 video = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{form_data['quality'][0]}.{format_str}"
                 if not isfile(path=video):
-                    raise Exception(f"File not found: {video}")
+                    not_found.append(f"{video}\n")
                 if "voice" in form_data:
                     if "all" in form_data["voice"] and "none" not in form_data["voice"]:
                         i_2 = 0
                         for dubs in content["dubs"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{dubs['code']}.mp4"
-                            if isfile(path=file):
-                                voice_str += f"-i {file} "
+                            dubs_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{dubs['code']}.mp4"
+                            if isfile(path=dubs_file):
+                                voice_str += f"-i {dubs_file} "
                                 map_str += f"-map {i} "
                                 i += 1
                                 name_1 = dubs["name"].replace("\"", "")
@@ -538,13 +454,13 @@ async def url_home(name):
                                     disposition_str += f"-disposition:s:{i_2} 0 "
                                 i_2 += 1
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{dubs_file}\n")
                     if "none" not in form_data["voice"] and "all" not in form_data["voice"]:
                         i_4 = 0
                         for voice in form_data["voice"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{voice}.mp4"
-                            if isfile(path=file):
-                                voice_str += f"-i {file} "
+                            voice_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{voice}.mp4"
+                            if isfile(path=voice_file):
+                                voice_str += f"-i {voice_file} "
                                 map_str += f"-map {i} "
                                 i += 1
                                 name_3, lang_3 = "", ""
@@ -562,14 +478,14 @@ async def url_home(name):
                                     disposition_str += f"-disposition:s:{i_4} 0 "
                                 i_4 += 1
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{voice_file}\n")
                 if "subtitles" in form_data:
                     if "all" in form_data["subtitles"] and "none" not in form_data["subtitles"]:
                         i_3 = 0
                         for subs in content["subs"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subs['code']}.ass"
-                            if isfile(path=file):
-                                sub_str += f"-i {file} "
+                            subs_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subs['code']}.ass"
+                            if isfile(path=subs_file):
+                                sub_str += f"-i {subs_file} "
                                 map_str += f"-map {i} "
                                 i += 1
                                 name_2 = subs["name"].replace("\"", "")
@@ -580,13 +496,13 @@ async def url_home(name):
                                 disposition_str += f"-disposition:s:{i_3} 0 "
                                 i_3 += 1
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{subs_file}\n")
                     if "none" not in form_data["subtitles"] and "all" not in form_data["subtitles"]:
                         i_5 = 0
                         for subtitles in form_data["subtitles"]:
-                            file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subtitles}.ass"
-                            if isfile(path=file):
-                                sub_str += f"-i {file} "
+                            subtitles_file = f"{settings['Базовый путь']}/{content['path'][26:-1]}/{subtitles}.ass"
+                            if isfile(path=subtitles_file):
+                                sub_str += f"-i {subtitles_file} "
                                 map_str += f"-map {i} "
                                 i += 1
                                 name_4, lang_4 = "", ""
@@ -601,8 +517,20 @@ async def url_home(name):
                                 disposition_str += f"-disposition:s:{i_5} 0 "
                                 i_5 += 1
                             else:
-                                raise Exception(f"File not found: {file}")
+                                not_found.append(f"{subtitles_file}\n")
+                if len(not_found) > 0:
+                    await logs(level="ERROR",
+                               message=f"Files not found: {''.join(not_found)}")
+                    with open(file=f"www/html/forms/notfound.html",
+                              mode="r",
+                              encoding="UTF-8") as notfound_html:
+                        return render_template_string(source=notfound_html.read(),
+                                                      files=not_found)
                 if form_data["format"][0] == "mkv":
+                    with open(file=f"{temp_path}/{user}/create.temp",
+                              mode="w",
+                              encoding="UTF-8") as create_temp:
+                        create_temp.close()
                     loop_2 = new_event_loop()
                     Thread(target=loop_2.run_forever).start()
                     run_coroutine_threadsafe(coro=create_mkv(video=video,
@@ -610,12 +538,14 @@ async def url_home(name):
                                                              sub_str=sub_str,
                                                              map_str=map_str,
                                                              meta_str=meta_str,
-                                                             ttt=ttt,
-                                                             tt=tt,
-                                                             t_folder=t_folder,
-                                                             t_file=t_file),
+                                                             ttt=f"{temp_path}/{user}/{file}",
+                                                             tt=f"{temp_path}/{user}"),
                                              loop=loop_2)
                 if form_data["format"][0] == "mp4" and form_data["quality"][0] not in ["1440", "2160"]:
+                    with open(file=f"{temp_path}/{user}/create.temp",
+                              mode="w",
+                              encoding="UTF-8") as create_temp:
+                        create_temp.close()
                     loop_3 = new_event_loop()
                     Thread(target=loop_3.run_forever).start()
                     run_coroutine_threadsafe(coro=create_mp4(video=video,
@@ -624,28 +554,14 @@ async def url_home(name):
                                                              map_str=map_str,
                                                              meta_str=meta_str,
                                                              disposition_str=disposition_str,
-                                                             ttt=ttt,
-                                                             tt=tt,
-                                                             t_folder=t_folder,
-                                                             t_file=t_file),
+                                                             ttt=f"{temp_path}/{user}/{file}",
+                                                             tt=f"{temp_path}/{user}"),
                                              loop=loop_3)
-            with open(file=f"{t_path}/{t_folder}/index.html",
-                      mode="w",
-                      encoding="UTF-8") as index_html:
-                with open(file=f"www/html/wait.html",
-                          mode="r",
-                          encoding="UTF-8") as wait_html:
-                    index_html.write(wait_html.read())
             return redirect(location=url_for(endpoint="url_users",
-                                             user=t_folder))
+                                             user=user))
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"www/html/error.html",
-                  mode="r",
-                  encoding="UTF-8") as error_html:
-            return render_template_string(source=error_html.read(),
-                                          time=datetime.now(tz=timezone(zone="Europe/Moscow")))
 
 
 @APP.route(rule="/css/<file>",
@@ -668,7 +584,7 @@ async def url_fonts(file):
                    message=format_exc())
 
 
-@APP.route(rule="/images/<file>",
+@APP.route(rule="/images/<path:file>",
            methods=["GET", "POST"])
 async def url_images(file):
     try:
@@ -694,18 +610,31 @@ async def url_users(user):
     try:
         from db.settings import settings
         temp_path = f"{settings['Временная папка']}/bronyru"
-        with open(file=f"{temp_path}/{user}/index.html",
-                  mode="r",
-                  encoding="UTF-8") as index_html:
-            return index_html.read()
+        if isdir(s=f"{temp_path}/{user}"):
+            files = listdir(path=f"{temp_path}/{user}")
+            if len(files) > 0 and "create.temp" not in files:
+                size = int(getsize(filename=f"{temp_path}/{user}/{files[0]}") / 1024 / 1024)
+                with open(file="www/html/users/files.html",
+                          mode="r",
+                          encoding="UTF-8") as files_html:
+                    return render_template_string(source=files_html.read(),
+                                                  domen=settings["Домен"],
+                                                  folder=user,
+                                                  file=files[0],
+                                                  size=size)
+            else:
+                with open(file="www/html/users/wait.html",
+                          mode="r",
+                          encoding="UTF-8") as wait_html:
+                    return wait_html.read()
+        else:
+            with open(file="www/html/users/delete.html",
+                      mode="r",
+                      encoding="UTF-8") as delete_html:
+                return delete_html.read()
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"www/html/error.html",
-                  mode="r",
-                  encoding="UTF-8") as error_html:
-            return render_template_string(source=error_html.read(),
-                                          time=datetime.now(tz=timezone(zone="Europe/Moscow")))
 
 
 @APP.route(rule="/files/<user>/<file>",
@@ -713,8 +642,8 @@ async def url_users(user):
 async def url_files(user, file):
     try:
         from db.settings import settings
-        temp_path = f"{settings['Временная папка']}/bronyru"
-        if isfile(path=f"{temp_path}/{user}/{file}"):
+        temp_path, mimetype = f"{settings['Временная папка']}/bronyru", ""
+        if isdir(s=f"{temp_path}/{user}") and isfile(path=f"{temp_path}/{user}/{file}"):
             def generate():
                 with open(file=f"{temp_path}/{user}/{file}",
                           mode="rb") as temp_file:
@@ -727,9 +656,10 @@ async def url_files(user, file):
                         else:
                             if down_size >= full_size:
                                 remove(path=f"{temp_path}/{user}/{file}")
+                                if len(listdir(path=f"{temp_path}/{user}")) == 0:
+                                    rmdir(path=f"{temp_path}/{user}")
                             break
 
-            mimetype = ""
             if file.endswith(".zip"):
                 mimetype = "application/zip"
             if file.endswith(".mkv"):
@@ -740,18 +670,13 @@ async def url_files(user, file):
                                       mimetype=mimetype,
                                       headers={"Content-Disposition": f"attachment; filename={file}"})
         else:
-            with open(file=f"www/html/delete.html",
+            with open(file=f"www/html/users/delete.html",
                       mode="r",
                       encoding="UTF-8") as delete_html:
                 return delete_html.read()
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
-        with open(file=f"www/html/error.html",
-                  mode="r",
-                  encoding="UTF-8") as error_html:
-            return render_template_string(source=error_html.read(),
-                                          time=datetime.now(tz=timezone(zone="Europe/Moscow")))
 
 
 @APP.route(rule="/admin",
@@ -807,7 +732,7 @@ async def url_admin():
         return redirect(location=url_for(endpoint="url_admin"))
 
 
-@APP.route(rule="/monitor",
+@APP.route(rule="/admin/monitor",
            methods=["GET", "POST"])
 async def url_monitor():
     try:
@@ -829,7 +754,7 @@ async def url_monitor():
                                    f"{int(disk_usage(disk.mountpoint).free / 1024 / 1024 / 1024)} ГБ\n"
                                    f"    Процент: {disk_usage(disk.mountpoint).percent} %\n\n")
                 monitor_rows += 6
-        with open(file=f"www/html/monitor.html",
+        with open(file=f"www/html/admins/monitor.html",
                   mode="r",
                   encoding="UTF-8") as monitor_html:
             return render_template_string(source=monitor_html.read(),
@@ -846,10 +771,10 @@ async def url_monitor():
 async def error_404(error):
     try:
         print(error)
-        with open(file=f"www/html/notfound.html",
+        with open(file=f"www/html/services/error.html",
                   mode="r",
-                  encoding="UTF-8") as notfound_html:
-            return notfound_html.read()
+                  encoding="UTF-8") as error_html:
+            return error_html.read()
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -859,10 +784,10 @@ async def error_404(error):
 async def error_500(error):
     try:
         print(error)
-        with open(file=f"www/html/notfound.html",
+        with open(file=f"www/html/services/error.html",
                   mode="r",
-                  encoding="UTF-8") as notfound_html:
-            return notfound_html.read()
+                  encoding="UTF-8") as error_html:
+            return error_html.read()
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -874,7 +799,8 @@ if __name__ == "__main__":
 
         run(main=autores())
         serve(app=APP,
-              port=int(settings["Порт"]))
+              port=int(settings["Порт"]),
+              threads=16)
     except Exception:
         run(main=logs(level="ERROR",
                       message=format_exc()))

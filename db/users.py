@@ -1,3 +1,1 @@
-import datetime
-
 users = {}

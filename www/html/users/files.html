@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Файл готов и уже пущен на скачивание!</title>
+        <link rel="stylesheet" type="text/css" href="/css/form.css"/>
+        <script type="text/javascript" src="/js/ponycfg.js"></script>
+        <link rel="icon" type="image/png" href="/images/favicon.png"/>
+        <script type="text/javascript" src="/js/browserponies.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <link rel="stylesheet" type="text/css" href="https://bronyru.info/_design/style.css"/>
+        <meta http-equiv="refresh" content="0;URL='{{ domen }}/files/{{ folder }}/{{ file }}'"/>
+    </head>
+    <body id="FramedText" oncontextmenu="return false;">
+        <h2>Файл готов и уже пущен на скачивание!</h2>
+        <h3>
+            По техническим причинам, прогресс-бар данной закачки
+            <br>не будет отображаться в вашем браузере.
+        </h3>
+        Размер файла составляет {{ size }} МБ.
+        <br>Если скачивание таки не началось - кликните <a href="{{ domen }}/files/{{ folder }}/{{ file }}">здесь</a>.
+        <br><br><br><br><button onclick="history.back(); return false;">Вернуться назад</button>
+        <script>
+            BrowserPonies.start();
+        </script>
+    </body>
+</html>

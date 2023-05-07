@@ -1,76 +1,64 @@
-var relations = {
-    quality: [
-        {
-            cb: function cb(input) {
-                var formatValue = getRadioGroupValue("format");
-                if (!formatValue) return false;
-                if (["2160", "1440"].includes(input.value) && formatValue !== "mkv") return false;
-
-                return true;
-            }
+let relations = {
+    quality: [{
+        cb: function cb(input) {
+            let formatValue = getRadioGroupValue("format");
+            if (!formatValue) return false;
+            return !(["2160", "1440"].includes(input.value) && formatValue !== "mkv");
         }
-    ],
-    voice: [
-        {
-            cb: function cb() {
-                var formatValue = getRadioGroupValue("format");
-                if (!formatValue) return false;
-
-                return true;
-            }
+    }],
+    voice: [{
+        cb: function cb() {
+            return getRadioGroupValue("format");
         }
-    ],
-    subtitles: [
-        {
-            cb: function cb() {
-                var formatValue = getRadioGroupValue("format");
-                if (!formatValue) return false;
-
-                return true;
-            }
+    }],
+    subtitles: [{
+        cb: function cb() {
+            return getRadioGroupValue("format");
         }
-    ],
-    submit: [
-        {
-            cb: function cb() {
-                var formatValue = getRadioGroupValue("format");
-                var qualityValue = getRadioGroupValue("quality");
-                var voiceValues = getCheckboxGroupValues("voice");
-                var subtitlesValues = getCheckboxGroupValues("subtitles");
-
-                if (document.querySelectorAll('input[name="quality"]').length === 0) {
-                    qualityValue = "none"
+    }],
+    submit: [{
+        cb: function cb() {
+            let formatValue = getRadioGroupValue("format");
+            let qualityValue = getRadioGroupValue("quality");
+            let voiceValues = getCheckboxGroupValues("voice");
+            let subtitlesValues = getCheckboxGroupValues("subtitles");
+            if (document.querySelectorAll('input[name="quality"]').length === 0) {
+                qualityValue = "none"
+            }
+            if (document.querySelectorAll('input[name="voice"]').length === 0) {
+                voiceValues = ["none"]
+            }
+            if (document.querySelectorAll('input[name="subtitles"]').length === 0) {
+                subtitlesValues = ["none"]
+            }
+            let ponyacha = document.getElementById("ponyacha");
+            if (ponyacha !== null) {
+                let ponyacha_label = document.getElementById("ponyacha_label");
+                if (ponyacha_label !== null) {
+                    if (ponyacha_label.children.length === 0) {
+                        return false;
+                    }
+                } else {
+                    return false;
                 }
-                if (document.querySelectorAll('input[name="voice"]').length === 0) {
-                    voiceValues = ["none"]
-                }
-                if (document.querySelectorAll('input[name="subtitles"]').length === 0) {
-                    subtitlesValues = ["none"]
-                }
-
-                if (qualityValue === "none" && voiceValues.includes("none") && subtitlesValues.includes("none")) return false;
-                if (!formatValue || !qualityValue || voiceValues.length === 0 || subtitlesValues.length === 0) return false;
-
-                return true;
             }
+            if (qualityValue === "none" && voiceValues.includes("none") && subtitlesValues.includes("none")) return false;
+            return !(!formatValue || !qualityValue || voiceValues.length === 0 || subtitlesValues.length === 0);
         }
-    ]
+    }]
 };
 
 function validate() {
-    var relationsKeys = Object.keys(relations);
+    let relationsKeys = Object.keys(relations);
     relationsKeys.forEach(function (key) {
-        var rules = relations[key];
-        var inputs = document.querySelectorAll("[name=" + key + "]");
+        let rules = relations[key];
+        let inputs = document.querySelectorAll("[name=" + key + "]");
         [].slice.call(inputs).forEach(function (input) {
             input.disabled = false;
-
             rules.forEach(function (rule) {
                 if (input.disabled) return;
-
-                var satisfied = rule.cb(input);
+                let satisfied = rule.cb(input);
                 input.disabled = !satisfied;
-
                 if (!satisfied) {
                     input.checked = false;
                 }
@@ -80,26 +68,26 @@ function validate() {
 }
 
 function getRadioGroupValue(name) {
-    var input = document.querySelector('input[name="' + name + '"]:checked');
+    let input = document.querySelector('input[name="' + name + '"]:checked');
     return input && input.value;
 }
 
 function getCheckboxGroupValues(name) {
-    var inputs = document.querySelectorAll('input[name="' + name + '"]:checked');
+    let inputs = document.querySelectorAll('input[name="' + name + '"]:checked');
     return [].slice.call(inputs).map(function (input) {
         return input.value;
     });
 }
 
 function uncheckOtherInGroupOnNone(name) {
-    var inputs = document.querySelectorAll('input[name="' + name + '"]:not([value="none"])');
+    let inputs = document.querySelectorAll('input[name="' + name + '"]:not([value="none"])');
     [].slice.call(inputs).forEach(function (input) {
         input.checked = false;
     });
 }
 
 function checkOtherInGroupOnAll(name) {
-    var inputs = document.querySelectorAll('input[name="' + name + '"]:not([value="none"])');
+    let inputs = document.querySelectorAll('input[name="' + name + '"]:not([value="none"])');
     [].slice.call(inputs).forEach(function (input) {
         input.checked = true;
         uncheckNoneInGroup(input.name);
@@ -108,21 +96,21 @@ function checkOtherInGroupOnAll(name) {
 }
 
 function uncheckNoneInGroup(name) {
-    var input = document.querySelector('input[name="' + name + '"][value="none"]');
+    let input = document.querySelector('input[name="' + name + '"][value="none"]');
     if (input) {
         input.checked = false;
     }
 }
 
 function uncheckAllInGroup(name) {
-    var input = document.querySelector('input[name="' + name + '"][value="all"]');
+    let input = document.querySelector('input[name="' + name + '"][value="all"]');
     if (input) {
         input.checked = false;
     }
 }
 
 function bindEvents() {
-    var inputs = document.querySelectorAll("input");
+    let inputs = document.querySelectorAll("input");
     [].slice.call(inputs).forEach(function (input) {
         input.addEventListener("change", function () {
             if (input.name) {

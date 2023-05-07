@@ -1,8 +1,4 @@
-import datetime
-
 settings = {"Дебаг": True,
-            "Дата обновления": datetime.datetime(2023, 2, 5, 16, 7, 31, 119585),
-            "Дата очистки": datetime.datetime(2023, 2, 5, 15, 35, 33, 352833),
             "Домен": "https://download.bronyru.info",
             "Порт": "80",
             "Базовый путь": "",

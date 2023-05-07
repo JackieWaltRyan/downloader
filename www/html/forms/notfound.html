@@ -1,0 +1,28 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8"/>
+        <link rel="stylesheet" type="text/css" href="/css/form.css"/>
+        <script type="text/javascript" src="/js/ponycfg.js"></script>
+        <link rel="icon" type="image/png" href="/images/favicon.png"/>
+        <script type="text/javascript" src="/js/browserponies.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <link rel="stylesheet" type="text/css" href="https://bronyru.info/_design/style.css"/>
+        <title>Один или несколько файлов, которые вы выбрали для сборки, не существуют на сервере...</title>
+    </head>
+    <body id="FramedText" oncontextmenu="return false;">
+        <h2>Один или несколько файлов, которые вы выбрали для сборки, не существуют на сервере...</h2>
+        <h3>
+            Пожалуйста, сообщите <a href="//vk.com/nasretdinov_r_r" target="_blank">Руслану</a> эти данные для решения проблемы:
+            <br><br>
+            {% for file in files %}
+                {{ file[40:] }}
+                <br>
+            {% endfor %}
+        </h3>
+        <br><br><button id="button" onclick="history.back(); return false;">Вернуться назад</button>
+        <script>
+            BrowserPonies.start();
+        </script>
+    </body>
+</html>
