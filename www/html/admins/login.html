@@ -3,31 +3,26 @@
     <head>
         <title>Войти</title>
         <meta charset="UTF-8"/>
-		<meta name="description" content="Войти"/>
-        <script type="text/javascript" src="/js/ponycfg.js"></script>
-		<link rel="icon" href="/images/favicon.png" type="image/png"/>
+        <meta name="description" content="Войти"/>
+        <script type="text/javascript" src="/js/downloader.js"></script>
+        <link rel="icon" href="/images/favicon.png" type="image/png"/>
         <link rel="stylesheet" type="text/css" href="/css/admin.css"/>
-        <script type="text/javascript" src="/js/browserponies.js"></script>
-		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
     </head>
-    <body>
-        <div id="background"></div>
-        <form method="post">
-            {% if error %}
-                <div class="alert">Значение "Логин" или "Пароль" неверные!</div>
-            {% endif %}
-            <br>Логин:
-            <br><label>
-                <input class="text" type="text" name="login"/>
-            </label>
-            <br>Пароль:
-            <br><label>
-                <input class="text" type="password" name="password"/>
-            </label>
-            <br><input class="submit" type="submit" value="Войти" name="submit"/>
-        </form>
-        <script>
-            BrowserPonies.start();
-        </script>
+    <body class="body">
+        <div class="background">
+            <form class="login" action="javascript:admin_login()">
+                <div>Логин:</div>
+                <label>
+                    <input id="login" type="text" required=""/>
+                </label>
+                <div>Пароль:</div>
+                <label>
+                    <input id="password" type="password" required=""/>
+                </label>
+                <div id="alert"></div>
+                <input class="submit" type="submit" value="Войти"/>
+            </form>
+        </div>
     </body>
 </html>

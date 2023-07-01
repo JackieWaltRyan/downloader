@@ -1,4 +1,4 @@
-# bronyru
+# downloader
 
 Back-end server for building and downloading files for the site "[ТО "Магия Дружбы"](https://xn--80acfekkz0b1a6ftb.xn--p1ai/)".
 

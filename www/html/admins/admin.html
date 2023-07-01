@@ -4,94 +4,46 @@
         <meta charset="UTF-8"/>
         <title>Административный</title>
 		<meta name="description" content="Административный"/>
-        <script type="text/javascript" src="/js/ponycfg.js"></script>
+        <script type="text/javascript" src="/js/downloader.js"></script>
 		<link rel="icon" href="/images/favicon.png" type="image/png"/>
         <link rel="stylesheet" type="text/css" href="/css/admin.css"/>
-        <script type="text/javascript" src="/js/browserponies.js"></script>
 		<meta name="viewport" content="width=device-width, initial-scale=1"/>
     </head>
-    <body>
-        <div id="background"></div>
-        <table>
-            <tbody>
-                <tr>
-                    <td>
-                        <a href="/admin/monitor" target="_blank">Монитор:</a>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <iframe src="/admin/monitor?clear"></iframe>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Триггеры:</td>
-                </tr>
-                <tr>
-                    <td>
-                        <label>
-                            <textarea rows="{{ triggers_rows }}" readonly="">{{ triggers_str }}</textarea>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Настройки:</td>
-                </tr>
-                <tr>
-                    <td>
-                        <label>
-                            <textarea rows="{{ settings_rows }}" readonly="">{{ settings_str }}</textarea>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Пользователи:</td>
-                </tr>
-                <tr>
-                    <td>
-                        <label>
-                            <textarea rows="{{ users_rows }}" readonly="">{{ users_str }}</textarea>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Управление:</td>
-                </tr>
-                <tr>
-                    <td>
-                        {% if error == 1 %}
-                            <div class="alert">Значение "Параметр" не найдено!</div>
-                        {% endif %}
-                        {% if error == 2 %}
-                            <div class="alert">Вы не можете изменять системные параметры!</div>
-                        {% endif %}
-                        {% if error == 3 %}
-                            <div class="alert">Значение "Параметр" или "Значение" не может быть пустым!</div>
-                        {% endif %}
-                        <form id="form" method="post">
+    <body class="body">
+        <div class="background">
+            <div class="footer">
+                <div id="user">Выполнен вход как:</div>
+                <div id="token">Скопировать токен</div>
+                <div id="restart">Перезагрузить сервер</div>
+                <div id="logout">Выйти</div>
+            </div>
+            <hr>
+            <div class="content">
+                <hr>
+                <div id="settings"></div>
+                <hr>
+                <div>
+                    <h3>Управление:</h3>
+                    <label>
+                        <select id="select" name="select" size="1">
+                            <option id="select_none" value="none" hidden="">Выберите тип</option>
+                        </select>
+                    </label>
+                    <form id="form" action="javascript:admin_manage()">
+                        <div id="form_value_1">
+                            <div id="form_value_1_name"></div>
                             <label>
-                                <input class="text" type="text" name="id" placeholder="Параметр"/>
+                                <input id="form_value_1_input" type="text" required=""/>
                             </label>
-                            <label>
-                                <input class="text" type="text" name="value" placeholder="Значение"/>
-                            </label>
-                            <input class="submit" type="submit" value="Отправить" name="submit"/>
-                        </form>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <form method="post">
-                            <input class="submit_50" type="submit" value="Дебаг" name="debug"/>
-                            <input class="submit_50" type="submit" value="Перезагрузка" name="res"/>
-                            <input class="submit" type="submit" value="Выйти" name="exit"/>
-                        </form>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                        </div>
+                        <input id="form_submit_input" type="submit" value="Подтвердить"/>
+                    </form>
+                </div>
+                <hr>
+            </div>
+        </div>
         <script>
-            BrowserPonies.start();
+            admin_load();
         </script>
     </body>
 </html>

@@ -3,19 +3,17 @@
     <head>
         <meta charset="UTF-8"/>
         <title>Файл уже удалён.</title>
-        <link rel="stylesheet" type="text/css" href="/css/form.css"/>
-        <script type="text/javascript" src="/js/ponycfg.js"></script>
+        <link rel="stylesheet" type="text/css" href="/css/style.css"/>
         <link rel="icon" type="image/png" href="/images/favicon.png"/>
-        <script type="text/javascript" src="/js/browserponies.js"></script>
+        <script type="text/javascript" src="/js/downloader.js"></script>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <link rel="stylesheet" type="text/css" href="https://bronyru.info/_design/style.css"/>
     </head>
-    <body id="FramedText" oncontextmenu="return false;">
+    <body class="body">
         <h2>Файл уже удалён,</h2>
         <h3>т.к. был полностью скачен или истекло время его хранения.</h3>
-        <br><br><button onclick="history.back(); return false;">Вернуться назад</button>
+        <br><br><button id="button">Вернуться назад</button>
         <script>
-            BrowserPonies.start();
+            page_load();
         </script>
     </body>
 </html>

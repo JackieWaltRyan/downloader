@@ -7,7 +7,10 @@ let select_list = []
 function ponyacha_create() {
     try {
         let ponyacha = document.getElementById("ponyacha");
-        ponyacha.addEventListener("contextmenu", (event) => block_context_menu(event));
+        ponyacha.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            return false;
+        });
         ponyacha.addEventListener("click", ponyacha_start);
 
         let ponyacha_checkbox = document.createElement("div");
@@ -299,6 +302,8 @@ function ponyacha_confirm() {
                 input.value = "ponyacha";
                 ponyacha_label.appendChild(input);
 
+                validate();
+
                 ponyacha.removeEventListener("click", ponyacha_start);
             } else {
                 let ponyacha_checkbox_text_pony = document.getElementById("ponyacha_checkbox_text_pony");
@@ -351,15 +356,6 @@ function ponyacha_hide() {
             let ponyacha = document.getElementById("ponyacha");
             ponyacha.addEventListener("click", ponyacha_start);
         }, 100);
-    } catch {
-        return false;
-    }
-}
-
-function block_context_menu(event) {
-    try {
-        event.preventDefault();
-        return false;
     } catch {
         return false;
     }
