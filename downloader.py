@@ -30,6 +30,8 @@ APP, LEVELS = Flask(import_name=__name__), {"DEBUG": 0x0000FF,
 APP.wsgi_app = ProxyFix(app=APP.wsgi_app)
 TIME = str(datetime.now(tz=timezone(zone="Europe/Moscow")))[:-13].replace(" ", "_").replace("-", "_").replace(":", "_")
 ADMINS = {}
+TOKENS = [sha256((x + ADMINS[x]).encode(encoding="UTF-8",
+                                        errors="ignore")).hexdigest() for x in ADMINS]
 
 
 async def logs(level, message, file=None):
@@ -103,12 +105,14 @@ async def delete():
             for root, dirs, files in walk(top=f"{db_settings['Временная папка']}/downloader"):
                 for file in files:
                     delta = int(t_time() - getmtime(filename=join(root, file)))
+
                     if delta >= int(db_settings["Время хранения"]) * 60 * 60:
                         try:
                             remove(path=join(root, file))
                         except Exception:
                             await logs(level="DEBUG",
                                        message=format_exc())
+
                 for folder in dirs:
                     if len(listdir(path=join(root, folder))) == 0:
                         rmdir(path=join(root, folder))
@@ -264,299 +268,300 @@ async def create_mp4(video, voice_str, sub_str, map_str, meta_str, disposition_s
 @APP.route(rule="/<path:name>")
 async def url_home(name):
     try:
-        print(request.args.to_dict(flat=False))
-
-        with open(file="db/settings.json",
-                  mode="r",
-                  encoding="UTF-8") as settings_json:
-            db_settings = loads(s=settings_json.read())
-
-            with open(file="db/users.json",
+        if request.method == "GET":
+            with open(file="db/settings.json",
                       mode="r",
-                      encoding="UTF-8") as users_json:
-                db_users = loads(s=users_json.read())
+                      encoding="UTF-8") as settings_json:
+                db_settings = loads(s=settings_json.read())
 
-                data = loads(s=get(url=f"https://bronyru.info/api/v1/episodes/name/{quote(string=name, safe='')}").text)
+                with open(file="db/users.json",
+                          mode="r",
+                          encoding="UTF-8") as users_json:
+                    db_users = loads(s=users_json.read())
 
-                if "path" not in data:
-                    return None
+                    data = loads(
+                        s=get(url=f"https://bronyru.info/api/v1/episodes/name/{quote(string=name, safe='')}").text)
 
-                if len(request.args) == 0:
-                    return await data_form(content=data,
-                                           name=quote(string=name,
-                                                      safe=""))
-                else:
-                    if request.remote_addr not in db_users:
-                        db_users.update({request.remote_addr: {"Запросов": "1",
-                                                               "Время": str(int(t_time()))}})
+                    if "path" not in data:
+                        return None
+
+                    if len(request.args) == 0:
+                        return await data_form(content=data,
+                                               name=quote(string=name,
+                                                          safe=""))
                     else:
-                        delta = (int(t_time()) - int(db_users[request.remote_addr]["Время"]))
-
-                        if delta < 60 * int(db_settings["Время каптчи"]):
-                            old = int(db_users[request.remote_addr]["Запросов"])
-
-                            db_users[request.remote_addr]["Запросов"] = str(old + 1)
+                        if request.remote_addr not in db_users:
+                            db_users.update({request.remote_addr: {"Запросов": "1",
+                                                                   "Время": str(int(t_time()))}})
                         else:
-                            db_users[request.remote_addr] = {"Запросов": "1",
+                            delta = (int(t_time()) - int(db_users[request.remote_addr]["Время"]))
+
+                            if delta < 60 * int(db_settings["Время каптчи"]):
+                                old = int(db_users[request.remote_addr]["Запросов"])
+
+                                db_users[request.remote_addr]["Запросов"] = str(old + 1)
+                            else:
+                                db_users[request.remote_addr] = {"Запросов": "1",
+                                                                 "Время": str(int(t_time()))}
+
+                        if "ponyacha" in request.args:
+                            db_users[request.remote_addr] = {"Запросов": "0",
                                                              "Время": str(int(t_time()))}
 
-                    if "ponyacha" in request.args:
-                        db_users[request.remote_addr] = {"Запросов": "0",
-                                                         "Время": str(int(t_time()))}
-
-                    with open(file="db/users.json",
-                              mode="w",
-                              encoding="UTF-8") as users_json_2:
-                        dump(obj=db_users,
-                             fp=users_json_2,
-                             indent=4,
-                             ensure_ascii=False)
-
-                    form_data, episode_id = request.args.to_dict(flat=False), 0
-                    temp_path, title_en, not_found = f"{db_settings['Временная папка']}/downloader", "", []
-                    user, base, files_str = f"{t_time()}_{random()}".replace(".", "_"), db_settings['Базовый путь'], ""
-
-                    if not exists(path=f"{temp_path}/{user}"):
-                        makedirs(name=f"{temp_path}/{user}")
-
-                    for item in data["translations"]:
-                        if item["locale"] == "en":
-                            title_en = r_sub(pattern=r"[^\d\s\w]",
-                                             repl="",
-                                             string=item["title"]).replace("  ", " ")
-                            episode_id = item["episodeId"]
-
-                    file = f"{episode_id}. {title_en}".encode(encoding="ISO-8859-1",
-                                                              errors="ignore").decode(encoding="UTF-8",
-                                                                                      errors="ignore")
-                    file = file.replace("  ", " ")
-
-                    if "quality" not in form_data:
-                        form_data["quality"].append("none")
-
-                    if form_data["quality"][0] == "none":
-                        if "voice" in form_data:
-                            if "all" in form_data["voice"] and "none" not in form_data["voice"]:
-                                for dubs in data["dubs"]:
-                                    dubs_file = f"{base}/{data['path'][26:-1]}/{dubs['code']}.mp4"
-
-                                    if isfile(path=dubs_file):
-                                        files_str += f"{dubs_file} "
-                                    else:
-                                        not_found.append(f"{dubs_file}\n")
-
-                            if "none" not in form_data["voice"] and "all" not in form_data["voice"]:
-                                for voice in form_data["voice"]:
-                                    voice_file = f"{base}/{data['path'][26:-1]}/{voice}.mp4"
-
-                                    if isfile(path=voice_file):
-                                        files_str += f"{voice_file} "
-                                    else:
-                                        not_found.append(f"{voice_file}\n")
-
-                        if "subtitles" in form_data:
-                            if "all" in form_data["subtitles"] and "none" not in form_data["subtitles"]:
-                                for subs in data["subs"]:
-                                    subs_file = f"{base}/{data['path'][26:-1]}/{subs['code']}.ass"
-
-                                    if isfile(path=subs_file):
-                                        files_str += f"{subs_file} "
-                                    else:
-                                        not_found.append(f"{subs_file}\n")
-                            if "none" not in form_data["subtitles"] and "all" not in form_data["subtitles"]:
-                                for subtitles in form_data["subtitles"]:
-                                    subtitles_file = f"{base}/{data['path'][26:-1]}/{subtitles}.ass"
-
-                                    if isfile(path=subtitles_file):
-                                        files_str += f"{subtitles_file} "
-                                    else:
-                                        not_found.append(f"{subtitles_file}\n")
-
-                        if len(not_found) > 0:
-                            await logs(level="ERROR",
-                                       message=f"Files not found: {''.join(not_found)}")
-
-                            with open(file=f"www/html/forms/notfound.html",
-                                      mode="r",
-                                      encoding="UTF-8") as notfound_html:
-                                return render_template_string(source=notfound_html.read(),
-                                                              files=not_found)
-
-                        with open(file=f"{temp_path}/{user}/create.temp",
+                        with open(file="db/users.json",
                                   mode="w",
-                                  encoding="UTF-8") as create_temp:
-                            create_temp.close()
+                                  encoding="UTF-8") as users_json_2:
+                            dump(obj=db_users,
+                                 fp=users_json_2,
+                                 indent=4,
+                                 ensure_ascii=False)
 
-                        loop = new_event_loop()
-                        Thread(target=loop.run_forever).start()
-                        run_coroutine_threadsafe(coro=create_zip(files_str=files_str,
-                                                                 ttt=f"{temp_path}/{user}/{file}",
-                                                                 tt=f"{temp_path}/{user}"),
-                                                 loop=loop)
-                    else:
-                        format_str, voice_str, sub_str, i, map_str = "mp4", "", "", 1, ""
-                        meta_str, disposition_str = "", ""
+                        form_data, episode_id = request.args.to_dict(flat=False), 0
+                        temp_path, title_en, not_found = f"{db_settings['Временная папка']}/downloader", "", []
+                        user, base, files_str = f"{t_time()}_{random()}".replace(".", "_"), db_settings[
+                            'Базовый путь'], ""
 
-                        if form_data["quality"][0] in ["1440", "2160"]:
-                            format_str = "webm"
+                        if not exists(path=f"{temp_path}/{user}"):
+                            makedirs(name=f"{temp_path}/{user}")
 
-                        video = f"{base}/{data['path'][26:-1]}/{form_data['quality'][0]}.{format_str}"
+                        for item in data["translations"]:
+                            if item["locale"] == "en":
+                                title_en = r_sub(pattern=r"[^\d\s\w]",
+                                                 repl="",
+                                                 string=item["title"]).replace("  ", " ")
+                                episode_id = item["episodeId"]
 
-                        if not isfile(path=video):
-                            not_found.append(f"{video}\n")
+                        file = f"{episode_id}. {title_en}".encode(encoding="ISO-8859-1",
+                                                                  errors="ignore").decode(encoding="UTF-8",
+                                                                                          errors="ignore")
+                        file = file.replace("  ", " ")
 
-                        if "voice" in form_data:
-                            if "all" in form_data["voice"] and "none" not in form_data["voice"]:
-                                i_2 = 0
+                        if "quality" not in form_data:
+                            form_data["quality"].append("none")
 
-                                for dubs in data["dubs"]:
-                                    dubs_file = f"{base}/{data['path'][26:-1]}/{dubs['code']}.mp4"
+                        if form_data["quality"][0] == "none":
+                            if "voice" in form_data:
+                                if "all" in form_data["voice"] and "none" not in form_data["voice"]:
+                                    for dubs in data["dubs"]:
+                                        dubs_file = f"{base}/{data['path'][26:-1]}/{dubs['code']}.mp4"
 
-                                    if isfile(path=dubs_file):
-                                        voice_str += f"-i {dubs_file} "
-                                        map_str += f"-map {i} "
-                                        i += 1
-                                        name_1 = dubs["name"].replace("\"", "")
-                                        lang_1 = dubs["lang"]
-                                        meta_str += str(f"-metadata:s:a:{i_2} title=\"{name_1}\" "
-                                                        f"-metadata:s:a:{i_2} description=\"{name_1}\" "
-                                                        f"-metadata:s:a:{i_2} language={lang_1} ")
-
-                                        if i_2 == 0:
-                                            disposition_str += f"-disposition:s:{i_2} default "
+                                        if isfile(path=dubs_file):
+                                            files_str += f"{dubs_file} "
                                         else:
-                                            disposition_str += f"-disposition:s:{i_2} 0 "
+                                            not_found.append(f"{dubs_file}\n")
 
-                                        i_2 += 1
-                                    else:
-                                        not_found.append(f"{dubs_file}\n")
+                                if "none" not in form_data["voice"] and "all" not in form_data["voice"]:
+                                    for voice in form_data["voice"]:
+                                        voice_file = f"{base}/{data['path'][26:-1]}/{voice}.mp4"
 
-                            if "none" not in form_data["voice"] and "all" not in form_data["voice"]:
-                                i_4 = 0
-
-                                for voice in form_data["voice"]:
-                                    voice_file = f"{base}/{data['path'][26:-1]}/{voice}.mp4"
-
-                                    if isfile(path=voice_file):
-                                        voice_str += f"-i {voice_file} "
-                                        map_str += f"-map {i} "
-                                        i += 1
-                                        name_3, lang_3 = "", ""
-
-                                        for dubs in data["dubs"]:
-                                            if dubs["code"] == voice:
-                                                name_3 = dubs["name"].replace("\"", "")
-                                                lang_3 = dubs["lang"]
-
-                                                break
-
-                                        meta_str += str(f"-metadata:s:a:{i_4} title=\"{name_3}\" "
-                                                        f"-metadata:s:a:{i_4} description=\"{name_3}\" "
-                                                        f"-metadata:s:a:{i_4} language={lang_3} ")
-
-                                        if i_4 == 0:
-                                            disposition_str += f"-disposition:s:{i_4} default "
+                                        if isfile(path=voice_file):
+                                            files_str += f"{voice_file} "
                                         else:
-                                            disposition_str += f"-disposition:s:{i_4} 0 "
+                                            not_found.append(f"{voice_file}\n")
 
-                                        i_4 += 1
-                                    else:
-                                        not_found.append(f"{voice_file}\n")
+                            if "subtitles" in form_data:
+                                if "all" in form_data["subtitles"] and "none" not in form_data["subtitles"]:
+                                    for subs in data["subs"]:
+                                        subs_file = f"{base}/{data['path'][26:-1]}/{subs['code']}.ass"
 
-                        if "subtitles" in form_data:
-                            if "all" in form_data["subtitles"] and "none" not in form_data["subtitles"]:
-                                i_3 = 0
+                                        if isfile(path=subs_file):
+                                            files_str += f"{subs_file} "
+                                        else:
+                                            not_found.append(f"{subs_file}\n")
+                                if "none" not in form_data["subtitles"] and "all" not in form_data["subtitles"]:
+                                    for subtitles in form_data["subtitles"]:
+                                        subtitles_file = f"{base}/{data['path'][26:-1]}/{subtitles}.ass"
 
-                                for subs in data["subs"]:
-                                    subs_file = f"{base}/{data['path'][26:-1]}/{subs['code']}.ass"
+                                        if isfile(path=subtitles_file):
+                                            files_str += f"{subtitles_file} "
+                                        else:
+                                            not_found.append(f"{subtitles_file}\n")
 
-                                    if isfile(path=subs_file):
-                                        sub_str += f"-i {subs_file} "
-                                        map_str += f"-map {i} "
-                                        i += 1
-                                        name_2 = subs["name"].replace("\"", "")
-                                        lang_2 = subs["lang"]
-                                        meta_str += str(f"-metadata:s:s:{i_3} title=\"{name_2}\" "
-                                                        f"-metadata:s:s:{i_3} description=\"{name_2}\" "
-                                                        f"-metadata:s:s:{i_3} language={lang_2} ")
-                                        disposition_str += f"-disposition:s:{i_3} 0 "
-                                        i_3 += 1
-                                    else:
-                                        not_found.append(f"{subs_file}\n")
+                            if len(not_found) > 0:
+                                await logs(level="ERROR",
+                                           message=f"Files not found: {''.join(not_found)}")
 
-                            if "none" not in form_data["subtitles"] and "all" not in form_data["subtitles"]:
-                                i_5 = 0
+                                with open(file=f"www/html/forms/notfound.html",
+                                          mode="r",
+                                          encoding="UTF-8") as notfound_html:
+                                    return render_template_string(source=notfound_html.read(),
+                                                                  files=not_found)
 
-                                for subtitles in form_data["subtitles"]:
-                                    subtitles_file = f"{base}/{data['path'][26:-1]}/{subtitles}.ass"
-
-                                    if isfile(path=subtitles_file):
-                                        sub_str += f"-i {subtitles_file} "
-                                        map_str += f"-map {i} "
-                                        i += 1
-                                        name_4, lang_4 = "", ""
-
-                                        for subs in data["subs"]:
-                                            if subs["code"] == subtitles:
-                                                name_4 = subs["name"].replace("\"", "")
-                                                lang_4 = subs["lang"]
-
-                                                break
-
-                                        meta_str += str(f"-metadata:s:s:{i_5} title=\"{name_4}\" "
-                                                        f"-metadata:s:s:{i_5} description=\"{name_4}\" "
-                                                        f"-metadata:s:s:{i_5} language={lang_4} ")
-                                        disposition_str += f"-disposition:s:{i_5} 0 "
-                                        i_5 += 1
-                                    else:
-                                        not_found.append(f"{subtitles_file}\n")
-
-                        if len(not_found) > 0:
-                            await logs(level="ERROR",
-                                       message=f"Files not found: {''.join(not_found)}")
-
-                            with open(file=f"www/html/forms/notfound.html",
-                                      mode="r",
-                                      encoding="UTF-8") as notfound_html:
-                                return render_template_string(source=notfound_html.read(),
-                                                              files=not_found)
-
-                        if form_data["format"][0] == "mkv":
                             with open(file=f"{temp_path}/{user}/create.temp",
                                       mode="w",
                                       encoding="UTF-8") as create_temp:
                                 create_temp.close()
 
-                            loop_2 = new_event_loop()
-                            Thread(target=loop_2.run_forever).start()
-                            run_coroutine_threadsafe(coro=create_mkv(video=video,
-                                                                     voice_str=voice_str,
-                                                                     sub_str=sub_str,
-                                                                     map_str=map_str,
-                                                                     meta_str=meta_str,
+                            loop = new_event_loop()
+                            Thread(target=loop.run_forever).start()
+                            run_coroutine_threadsafe(coro=create_zip(files_str=files_str,
                                                                      ttt=f"{temp_path}/{user}/{file}",
                                                                      tt=f"{temp_path}/{user}"),
-                                                     loop=loop_2)
-                        if form_data["format"][0] == "mp4" and form_data["quality"][0] not in ["1440", "2160"]:
-                            with open(file=f"{temp_path}/{user}/create.temp",
-                                      mode="w",
-                                      encoding="UTF-8") as create_temp:
-                                create_temp.close()
+                                                     loop=loop)
+                        else:
+                            format_str, voice_str, sub_str, i, map_str = "mp4", "", "", 1, ""
+                            meta_str, disposition_str = "", ""
 
-                            loop_3 = new_event_loop()
-                            Thread(target=loop_3.run_forever).start()
-                            run_coroutine_threadsafe(coro=create_mp4(video=video,
-                                                                     voice_str=voice_str,
-                                                                     sub_str=sub_str,
-                                                                     map_str=map_str,
-                                                                     meta_str=meta_str,
-                                                                     disposition_str=disposition_str,
-                                                                     ttt=f"{temp_path}/{user}/{file}",
-                                                                     tt=f"{temp_path}/{user}"),
-                                                     loop=loop_3)
+                            if form_data["quality"][0] in ["1440", "2160"]:
+                                format_str = "webm"
 
-                    return redirect(location=url_for(endpoint="url_users",
-                                                     user=user))
+                            video = f"{base}/{data['path'][26:-1]}/{form_data['quality'][0]}.{format_str}"
+
+                            if not isfile(path=video):
+                                not_found.append(f"{video}\n")
+
+                            if "voice" in form_data:
+                                if "all" in form_data["voice"] and "none" not in form_data["voice"]:
+                                    i_2 = 0
+
+                                    for dubs in data["dubs"]:
+                                        dubs_file = f"{base}/{data['path'][26:-1]}/{dubs['code']}.mp4"
+
+                                        if isfile(path=dubs_file):
+                                            voice_str += f"-i {dubs_file} "
+                                            map_str += f"-map {i} "
+                                            i += 1
+                                            name_1 = dubs["name"].replace("\"", "")
+                                            lang_1 = dubs["lang"]
+                                            meta_str += str(f"-metadata:s:a:{i_2} title=\"{name_1}\" "
+                                                            f"-metadata:s:a:{i_2} description=\"{name_1}\" "
+                                                            f"-metadata:s:a:{i_2} language={lang_1} ")
+
+                                            if i_2 == 0:
+                                                disposition_str += f"-disposition:s:{i_2} default "
+                                            else:
+                                                disposition_str += f"-disposition:s:{i_2} 0 "
+
+                                            i_2 += 1
+                                        else:
+                                            not_found.append(f"{dubs_file}\n")
+
+                                if "none" not in form_data["voice"] and "all" not in form_data["voice"]:
+                                    i_4 = 0
+
+                                    for voice in form_data["voice"]:
+                                        voice_file = f"{base}/{data['path'][26:-1]}/{voice}.mp4"
+
+                                        if isfile(path=voice_file):
+                                            voice_str += f"-i {voice_file} "
+                                            map_str += f"-map {i} "
+                                            i += 1
+                                            name_3, lang_3 = "", ""
+
+                                            for dubs in data["dubs"]:
+                                                if dubs["code"] == voice:
+                                                    name_3 = dubs["name"].replace("\"", "")
+                                                    lang_3 = dubs["lang"]
+
+                                                    break
+
+                                            meta_str += str(f"-metadata:s:a:{i_4} title=\"{name_3}\" "
+                                                            f"-metadata:s:a:{i_4} description=\"{name_3}\" "
+                                                            f"-metadata:s:a:{i_4} language={lang_3} ")
+
+                                            if i_4 == 0:
+                                                disposition_str += f"-disposition:s:{i_4} default "
+                                            else:
+                                                disposition_str += f"-disposition:s:{i_4} 0 "
+
+                                            i_4 += 1
+                                        else:
+                                            not_found.append(f"{voice_file}\n")
+
+                            if "subtitles" in form_data:
+                                if "all" in form_data["subtitles"] and "none" not in form_data["subtitles"]:
+                                    i_3 = 0
+
+                                    for subs in data["subs"]:
+                                        subs_file = f"{base}/{data['path'][26:-1]}/{subs['code']}.ass"
+
+                                        if isfile(path=subs_file):
+                                            sub_str += f"-i {subs_file} "
+                                            map_str += f"-map {i} "
+                                            i += 1
+                                            name_2 = subs["name"].replace("\"", "")
+                                            lang_2 = subs["lang"]
+                                            meta_str += str(f"-metadata:s:s:{i_3} title=\"{name_2}\" "
+                                                            f"-metadata:s:s:{i_3} description=\"{name_2}\" "
+                                                            f"-metadata:s:s:{i_3} language={lang_2} ")
+                                            disposition_str += f"-disposition:s:{i_3} 0 "
+                                            i_3 += 1
+                                        else:
+                                            not_found.append(f"{subs_file}\n")
+
+                                if "none" not in form_data["subtitles"] and "all" not in form_data["subtitles"]:
+                                    i_5 = 0
+
+                                    for subtitles in form_data["subtitles"]:
+                                        subtitles_file = f"{base}/{data['path'][26:-1]}/{subtitles}.ass"
+
+                                        if isfile(path=subtitles_file):
+                                            sub_str += f"-i {subtitles_file} "
+                                            map_str += f"-map {i} "
+                                            i += 1
+                                            name_4, lang_4 = "", ""
+
+                                            for subs in data["subs"]:
+                                                if subs["code"] == subtitles:
+                                                    name_4 = subs["name"].replace("\"", "")
+                                                    lang_4 = subs["lang"]
+
+                                                    break
+
+                                            meta_str += str(f"-metadata:s:s:{i_5} title=\"{name_4}\" "
+                                                            f"-metadata:s:s:{i_5} description=\"{name_4}\" "
+                                                            f"-metadata:s:s:{i_5} language={lang_4} ")
+                                            disposition_str += f"-disposition:s:{i_5} 0 "
+                                            i_5 += 1
+                                        else:
+                                            not_found.append(f"{subtitles_file}\n")
+
+                            if len(not_found) > 0:
+                                await logs(level="ERROR",
+                                           message=f"Files not found: {''.join(not_found)}")
+
+                                with open(file=f"www/html/forms/notfound.html",
+                                          mode="r",
+                                          encoding="UTF-8") as notfound_html:
+                                    return render_template_string(source=notfound_html.read(),
+                                                                  files=not_found)
+
+                            if form_data["format"][0] == "mkv":
+                                with open(file=f"{temp_path}/{user}/create.temp",
+                                          mode="w",
+                                          encoding="UTF-8") as create_temp:
+                                    create_temp.close()
+
+                                loop_2 = new_event_loop()
+                                Thread(target=loop_2.run_forever).start()
+                                run_coroutine_threadsafe(coro=create_mkv(video=video,
+                                                                         voice_str=voice_str,
+                                                                         sub_str=sub_str,
+                                                                         map_str=map_str,
+                                                                         meta_str=meta_str,
+                                                                         ttt=f"{temp_path}/{user}/{file}",
+                                                                         tt=f"{temp_path}/{user}"),
+                                                         loop=loop_2)
+                            if form_data["format"][0] == "mp4" and form_data["quality"][0] not in ["1440", "2160"]:
+                                with open(file=f"{temp_path}/{user}/create.temp",
+                                          mode="w",
+                                          encoding="UTF-8") as create_temp:
+                                    create_temp.close()
+
+                                loop_3 = new_event_loop()
+                                Thread(target=loop_3.run_forever).start()
+                                run_coroutine_threadsafe(coro=create_mp4(video=video,
+                                                                         voice_str=voice_str,
+                                                                         sub_str=sub_str,
+                                                                         map_str=map_str,
+                                                                         meta_str=meta_str,
+                                                                         disposition_str=disposition_str,
+                                                                         ttt=f"{temp_path}/{user}/{file}",
+                                                                         tt=f"{temp_path}/{user}"),
+                                                         loop=loop_3)
+
+                        return redirect(location=url_for(endpoint="url_users",
+                                                         user=user))
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -569,7 +574,8 @@ async def url_home(name):
 @APP.route(rule="/css/<path:file>")
 async def url_css(file):
     try:
-        return send_file(path_or_file=f"www/css/{file}")
+        if request.method == "GET":
+            return send_file(path_or_file=f"www/css/{file}")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -579,7 +585,8 @@ async def url_css(file):
 @APP.route(rule="/fonts/<path:file>")
 async def url_fonts(file):
     try:
-        return send_file(path_or_file=f"www/fonts/{file}")
+        if request.method == "GET":
+            return send_file(path_or_file=f"www/fonts/{file}")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -589,7 +596,8 @@ async def url_fonts(file):
 @APP.route(rule="/images/<path:file>")
 async def url_images(file):
     try:
-        return send_file(path_or_file=f"www/images/{file}")
+        if request.method == "GET":
+            return send_file(path_or_file=f"www/images/{file}")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -599,7 +607,8 @@ async def url_images(file):
 @APP.route(rule="/js/<path:file>")
 async def url_js(file):
     try:
-        return send_file(path_or_file=f"www/js/{file}")
+        if request.method == "GET":
+            return send_file(path_or_file=f"www/js/{file}")
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -609,37 +618,38 @@ async def url_js(file):
 @APP.route(rule="/users/<user>")
 async def url_users(user):
     try:
-        with open(file="db/settings.json",
-                  mode="r",
-                  encoding="UTF-8") as settings_json:
-            db_settings = loads(s=settings_json.read())
+        if request.method == "GET":
+            with open(file="db/settings.json",
+                      mode="r",
+                      encoding="UTF-8") as settings_json:
+                db_settings = loads(s=settings_json.read())
 
-            temp_path = f"{db_settings['Временная папка']}/downloader"
+                temp_path = f"{db_settings['Временная папка']}/downloader"
 
-            if isdir(s=f"{temp_path}/{user}"):
-                files = listdir(path=f"{temp_path}/{user}")
+                if isdir(s=f"{temp_path}/{user}"):
+                    files = listdir(path=f"{temp_path}/{user}")
 
-                if len(files) > 0 and "create.temp" not in files:
-                    size = int(getsize(filename=f"{temp_path}/{user}/{files[0]}") / 1024 / 1024)
+                    if len(files) > 0 and "create.temp" not in files:
+                        size = int(getsize(filename=f"{temp_path}/{user}/{files[0]}") / 1024 / 1024)
 
-                    with open(file="www/html/users/files.html",
-                              mode="r",
-                              encoding="UTF-8") as files_html:
-                        return render_template_string(source=files_html.read(),
-                                                      domen=db_settings["Домен"],
-                                                      folder=user,
-                                                      file=files[0],
-                                                      size=size)
+                        with open(file="www/html/users/files.html",
+                                  mode="r",
+                                  encoding="UTF-8") as files_html:
+                            return render_template_string(source=files_html.read(),
+                                                          domen=db_settings["Домен"],
+                                                          folder=user,
+                                                          file=files[0],
+                                                          size=size)
+                    else:
+                        with open(file="www/html/users/wait.html",
+                                  mode="r",
+                                  encoding="UTF-8") as wait_html:
+                            return wait_html.read()
                 else:
-                    with open(file="www/html/users/wait.html",
+                    with open(file="www/html/users/delete.html",
                               mode="r",
-                              encoding="UTF-8") as wait_html:
-                        return wait_html.read()
-            else:
-                with open(file="www/html/users/delete.html",
-                          mode="r",
-                          encoding="UTF-8") as delete_html:
-                    return delete_html.read()
+                              encoding="UTF-8") as delete_html:
+                        return delete_html.read()
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -649,52 +659,53 @@ async def url_users(user):
 @APP.route(rule="/files/<user>/<file>")
 async def url_files(user, file):
     try:
-        with open(file="db/settings.json",
-                  mode="r",
-                  encoding="UTF-8") as settings_json:
-            db_settings = loads(s=settings_json.read())
+        if request.method == "GET":
+            with open(file="db/settings.json",
+                      mode="r",
+                      encoding="UTF-8") as settings_json:
+                db_settings = loads(s=settings_json.read())
 
-            temp_path, mimetype = f"{db_settings['Временная папка']}/downloader", ""
+                temp_path, mimetype = f"{db_settings['Временная папка']}/downloader", ""
 
-            if isdir(s=f"{temp_path}/{user}") and isfile(path=f"{temp_path}/{user}/{file}"):
-                def generate():
-                    with open(file=f"{temp_path}/{user}/{file}",
-                              mode="rb") as temp_file:
-                        full_size, down_size = getsize(filename=f"{temp_path}/{user}/{file}"), 0
+                if isdir(s=f"{temp_path}/{user}") and isfile(path=f"{temp_path}/{user}/{file}"):
+                    def generate():
+                        with open(file=f"{temp_path}/{user}/{file}",
+                                  mode="rb") as temp_file:
+                            full_size, down_size = getsize(filename=f"{temp_path}/{user}/{file}"), 0
 
-                        while True:
-                            chunk = temp_file.read(1024 * 1024 * 10)
+                            while True:
+                                chunk = temp_file.read(1024 * 1024 * 10)
 
-                            if chunk:
-                                down_size += len(chunk)
+                                if chunk:
+                                    down_size += len(chunk)
 
-                                yield chunk
-                            else:
-                                if down_size >= full_size:
-                                    remove(path=f"{temp_path}/{user}/{file}")
+                                    yield chunk
+                                else:
+                                    if down_size >= full_size:
+                                        remove(path=f"{temp_path}/{user}/{file}")
 
-                                    if len(listdir(path=f"{temp_path}/{user}")) == 0:
-                                        rmdir(path=f"{temp_path}/{user}")
+                                        if len(listdir(path=f"{temp_path}/{user}")) == 0:
+                                            rmdir(path=f"{temp_path}/{user}")
 
-                                break
+                                    break
 
-                if file.endswith(".zip"):
-                    mimetype = "application/zip"
+                    if file.endswith(".zip"):
+                        mimetype = "application/zip"
 
-                if file.endswith(".mkv"):
-                    mimetype = "video/x-matroska"
+                    if file.endswith(".mkv"):
+                        mimetype = "video/x-matroska"
 
-                if file.endswith(".mp4"):
-                    mimetype = "video/mp4"
+                    if file.endswith(".mp4"):
+                        mimetype = "video/mp4"
 
-                return APP.response_class(response=generate(),
-                                          mimetype=mimetype,
-                                          headers={"Content-Disposition": f"attachment; filename={file}"})
-            else:
-                with open(file=f"www/html/users/delete.html",
-                          mode="r",
-                          encoding="UTF-8") as delete_html:
-                    return delete_html.read()
+                    return APP.response_class(response=generate(),
+                                              mimetype=mimetype,
+                                              headers={"Content-Disposition": f"attachment; filename={file}"})
+                else:
+                    with open(file=f"www/html/users/delete.html",
+                              mode="r",
+                              encoding="UTF-8") as delete_html:
+                        return delete_html.read()
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -704,22 +715,22 @@ async def url_files(user, file):
 @APP.route(rule="/admin")
 async def url_admin():
     try:
-        if "token" in request.args:
-            token = request.args["token"]
-        else:
-            token = request.cookies.get("downloader_token")
+        if request.method == "GET":
+            if "token" in request.args:
+                token = request.args["token"]
+            else:
+                token = request.cookies.get("downloader_token")
 
-        if token in [sha256((x + ADMINS[x]).encode(encoding="UTF-8",
-                                                   errors="ignore")).hexdigest() for x in ADMINS]:
-            with open(file=f"www/html/admins/admin.html",
-                      mode="r",
-                      encoding="UTF-8") as admin_html:
-                return render_template_string(source=admin_html.read())
-        else:
-            with open(file=f"www/html/admins/login.html",
-                      mode="r",
-                      encoding="UTF-8") as login_html:
-                return render_template_string(source=login_html.read())
+            if token in TOKENS:
+                with open(file=f"www/html/admins/admin.html",
+                          mode="r",
+                          encoding="UTF-8") as admin_html:
+                    return render_template_string(source=admin_html.read())
+            else:
+                with open(file=f"www/html/admins/login.html",
+                          mode="r",
+                          encoding="UTF-8") as login_html:
+                    return render_template_string(source=login_html.read())
     except Exception:
         await logs(level="ERROR",
                    message=format_exc())
@@ -729,23 +740,23 @@ async def url_admin():
 @APP.route(rule="/api/admin/auth")
 async def url_api_admin_auth():
     try:
-        try:
-            password = sha256(request.args["password"].encode(encoding="UTF-8",
-                                                              errors="ignore")).hexdigest()
-            token = sha256((request.args["login"] + password).encode(encoding="UTF-8",
-                                                                     errors="ignore")).hexdigest()
-        except Exception:
-            raise Exception
+        if request.method == "GET":
+            try:
+                password = sha256(request.args["password"].encode(encoding="UTF-8",
+                                                                  errors="ignore")).hexdigest()
+                token = sha256((request.args["login"] + password).encode(encoding="UTF-8",
+                                                                         errors="ignore")).hexdigest()
+            except Exception:
+                raise Exception
 
-        if token in [sha256((x + ADMINS[x]).encode(encoding="UTF-8",
-                                                   errors="ignore")).hexdigest() for x in ADMINS]:
-            response = make_response({"user": request.args["login"],
-                                      "token": token})
-            response.set_cookie("downloader_token", token)
+            if token in TOKENS:
+                response = make_response({"user": request.args["login"],
+                                          "token": token})
+                response.set_cookie("downloader_token", token)
 
-            return response
-        else:
-            raise HTTPException
+                return response
+            else:
+                raise HTTPException
     except HTTPException:
         return abort(code=401)
     except Exception:
@@ -757,23 +768,24 @@ async def url_api_admin_auth():
 @APP.route(rule="/api/admin/user")
 async def url_api_admin_user():
     try:
-        if "token" in request.args:
-            token = request.args["token"]
-        else:
-            token = request.cookies.get("downloader_token")
+        if request.method == "GET":
+            if "token" in request.args:
+                token = request.args["token"]
+            else:
+                token = request.cookies.get("downloader_token")
 
-        if token is None:
-            raise HTTPException
+            if token is None:
+                raise HTTPException
 
-        try:
-            for admin in ADMINS:
-                if token == sha256((admin + ADMINS[admin]).encode(encoding="UTF-8",
-                                                                  errors="ignore")).hexdigest():
-                    return {"user": admin,
-                            "token": token}
-            raise Exception
-        except Exception:
-            raise Exception
+            try:
+                for admin in ADMINS:
+                    if token == sha256((admin + ADMINS[admin]).encode(encoding="UTF-8",
+                                                                      errors="ignore")).hexdigest():
+                        return {"user": admin,
+                                "token": token}
+                raise Exception
+            except Exception:
+                raise Exception
     except HTTPException:
         return abort(code=401)
     except Exception:
@@ -785,21 +797,21 @@ async def url_api_admin_user():
 @APP.route(rule="/api/admin/restart")
 async def url_api_admin_restart():
     try:
-        if "token" in request.args:
-            token = request.args["token"]
-        else:
-            token = request.cookies.get("downloader_token")
+        if request.method == "GET":
+            if "token" in request.args:
+                token = request.args["token"]
+            else:
+                token = request.cookies.get("downloader_token")
 
-        if token is None or token not in [sha256((x + ADMINS[x]).encode(encoding="UTF-8",
-                                                                        errors="ignore")).hexdigest() for x in ADMINS]:
-            raise HTTPException
+            if token is None or token not in TOKENS:
+                raise HTTPException
 
-        try:
-            await restart()
+            try:
+                await restart()
 
-            return "1125"
-        except Exception:
-            raise Exception
+                return "1125"
+            except Exception:
+                raise Exception
     except HTTPException:
         return abort(code=401)
     except Exception:
@@ -811,24 +823,24 @@ async def url_api_admin_restart():
 @APP.route(rule="/api/admin/settings")
 async def url_api_admin_settings():
     try:
-        if "token" in request.args:
-            token = request.args["token"]
-        else:
-            token = request.cookies.get("downloader_token")
+        if request.method == "GET":
+            if "token" in request.args:
+                token = request.args["token"]
+            else:
+                token = request.cookies.get("downloader_token")
 
-        if token is None or token not in [sha256((x + ADMINS[x]).encode(encoding="UTF-8",
-                                                                        errors="ignore")).hexdigest() for x in ADMINS]:
-            raise HTTPException
+            if token is None or token not in TOKENS:
+                raise HTTPException
 
-        try:
-            with open(file="db/settings.json",
-                      mode="r",
-                      encoding="UTF-8") as settings_json:
-                db = loads(s=settings_json.read())
+            try:
+                with open(file="db/settings.json",
+                          mode="r",
+                          encoding="UTF-8") as settings_json:
+                    db = loads(s=settings_json.read())
 
-                return db
-        except Exception:
-            raise Exception
+                    return db
+            except Exception:
+                raise Exception
     except HTTPException:
         return abort(code=401)
     except Exception:
@@ -840,33 +852,33 @@ async def url_api_admin_settings():
 @APP.route(rule="/api/admin/change")
 async def url_api_admin_change():
     try:
-        if "token" in request.args:
-            token = request.args["token"]
-        else:
-            token = request.cookies.get("downloader_token")
+        if request.method == "GET":
+            if "token" in request.args:
+                token = request.args["token"]
+            else:
+                token = request.cookies.get("downloader_token")
 
-        if token is None or token not in [sha256((x + ADMINS[x]).encode(encoding="UTF-8",
-                                                                        errors="ignore")).hexdigest() for x in ADMINS]:
-            raise HTTPException
+            if token is None or token not in TOKENS:
+                raise HTTPException
 
-        try:
-            with open(file="db/settings.json",
-                      mode="r",
-                      encoding="UTF-8") as settings_json:
-                db = loads(s=settings_json.read())
-
-                db[request.args["item"]] = request.args["value"]
-
+            try:
                 with open(file="db/settings.json",
-                          mode="w",
-                          encoding="UTF-8") as settings_json_2:
-                    dump(obj=db,
-                         fp=settings_json_2,
-                         indent=4,
-                         ensure_ascii=False)
-            return "1125"
-        except Exception:
-            raise Exception
+                          mode="r",
+                          encoding="UTF-8") as settings_json:
+                    db = loads(s=settings_json.read())
+
+                    db[request.args["item"]] = request.args["value"]
+
+                    with open(file="db/settings.json",
+                              mode="w",
+                              encoding="UTF-8") as settings_json_2:
+                        dump(obj=db,
+                             fp=settings_json_2,
+                             indent=4,
+                             ensure_ascii=False)
+                return "1125"
+            except Exception:
+                raise Exception
     except HTTPException:
         return abort(code=401)
     except Exception:
@@ -879,6 +891,7 @@ async def url_api_admin_change():
 async def error_handler(error):
     try:
         print(error)
+
         with open(file=f"www/html/services/error.html",
                   mode="r",
                   encoding="UTF-8") as error_html:
@@ -898,6 +911,7 @@ if __name__ == "__main__":
             DB_SETTINGS = loads(s=SETTINGS_JSON.read())
 
             run(main=autores())
+
             serve(app=APP,
                   port=int(DB_SETTINGS["Порт"]),
                   threads=16)
