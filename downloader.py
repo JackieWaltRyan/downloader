@@ -48,8 +48,7 @@ async def logs(level, message, file=None):
 
         webhook = AsyncDiscordWebhook(username="Магия Дружбы",
                                       avatar_url="https://cdn.discordapp.com/attachments/1021085537802649661/"
-                                                 "1051579517564616815/bronyru.png",
-                                      url="")
+                                                 "1051579517564616815/bronyru.png", url="")
 
         if len(message) <= 4096:
             webhook.add_embed(embed=DiscordEmbed(title=level,
@@ -180,7 +179,7 @@ async def data_form(content, name, message=None):
                           mode="r",
                           encoding="UTF-8") as form_html:
                     return render_template_string(source=form_html.read(),
-                                                  domen=db_settings["Домен"],
+                                                  domen=db_settings["Публичный домен"],
                                                   name=name,
                                                   videos=videos,
                                                   dubs=dubs,
@@ -279,8 +278,8 @@ async def url_home(name):
                           encoding="UTF-8") as users_json:
                     db_users = loads(s=users_json.read())
 
-                    data = loads(
-                        s=get(url=f"https://bronyru.info/api/v1/episodes/name/{quote(string=name, safe='')}").text)
+                    data = loads(s=get(url=f"{db_settings['Локальный домен']}/{quote(string=name, safe='')}",
+                                       verify=False).text)
 
                     if "path" not in data:
                         return None
@@ -636,7 +635,7 @@ async def url_users(user):
                                   mode="r",
                                   encoding="UTF-8") as files_html:
                             return render_template_string(source=files_html.read(),
-                                                          domen=db_settings["Домен"],
+                                                          domen=db_settings["Публичный домен"],
                                                           folder=user,
                                                           file=files[0],
                                                           size=size)

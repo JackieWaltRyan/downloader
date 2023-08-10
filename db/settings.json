@@ -1,8 +1,9 @@
 {
-    "Домен": "https://download.bronyru.info",
-    "Порт": "",
-    "Базовый путь": "",
-    "Временная папка": "",
+    "Публичный домен": "https://download.bronyru.info",
+    "Локальный домен": "https://localhost/api/v1/episodes/name",
+    "Порт": "1010",
+    "Базовый путь": "/var/www/html/domains/base/public",
+    "Временная папка": "/mnt/BigData/MLP-DL",
     "Время хранения": "24",
     "Время каптчи": "10",
     "Файлы каптчи": "5"
